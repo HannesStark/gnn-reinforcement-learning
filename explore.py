@@ -1,31 +1,28 @@
-import gym
 import pybullet as p
-import time
+from time import sleep
 import pybullet_data
-import pybullet_envs
 
-physicsClient = p.connect(p.GUI)  # or p.DIRECT for non-graphical version
+p.connect(p.GUI)
+p.setAdditionalSearchPath(pybullet_data.getDataPath())
+planeId = p.loadURDF("plane.urdf")
 p.setGravity(0, 0, -10)
-p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
-planeId = p.loadURDF('plane.urdf')
-r2d2_start_pos = [0, 0, 1]
-cheetah_start_pos = [1, 0, 1]
-cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-r2d2_id = p.loadURDF('r2d2.urdf', r2d2_start_pos, cubeStartOrientation)
-cheetah_id = p.loadURDF("mini_cheetah/mini_cheetah.urdf", cheetah_start_pos, cubeStartOrientation)
-numJoints = p.getNumJoints(cheetah_id)
-print(cheetah_id)
-print(numJoints)
-maxForce = 500
-p.setRealTimeSimulation(1)
+angle = p.addUserDebugParameter('Steering', -0.5, 0.5, 0)
+throttle = p.addUserDebugParameter('Throttle', 0, 20, 0)
 
-while (True):
+car = p.loadURDF('simplecar.urdf', [0, 0, 0.1])
+sleep(3)
+wheel_indices = [1, 3, 4, 5]
+hinge_indices = [0, 2]
+
+while True:
+    user_angle = p.readUserDebugParameter(angle)
+    user_throttle = p.readUserDebugParameter(throttle)
+    for joint_index in wheel_indices:
+        p.setJointMotorControl2(car, joint_index,
+                                p.VELOCITY_CONTROL,
+                                targetVelocity=user_throttle)
+    for joint_index in hinge_indices:
+        p.setJointMotorControl2(car, joint_index,
+                                p.POSITION_CONTROL,
+                                targetPosition=user_angle)
     p.stepSimulation()
-    time.sleep(1. / 240.)
-    p.setJointMotorControl2(
-        r2d2_id,
-        0,
-        p.VELOCITY_CONTROL,
-        force=1.5,
-        # maxVelocity=5
-    )
