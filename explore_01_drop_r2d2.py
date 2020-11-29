@@ -30,9 +30,11 @@ planeId = p.loadURDF("plane.urdf")
 # and getEulerFromQuaternion euler angles [yaw, pitch, roll]
 # or a 3x3 matric can also be used
 # Note: euler angles are provided in radients not degree
-cubeStartOrientation = p.getQuaternionFromEuler([0, 1/6 * math.pi, 0])
+cubeStartOrientation = p.getQuaternionFromEuler([1/12 * math.pi,
+                                                 1/6 * math.pi,
+                                                 3/2 * math.pi])
 
-cubeStartPos = [0, 0, 1]
+cubeStartPos = [0.5, -0.5, 2]
 boxId = p.loadURDF("r2d2.urdf", cubeStartPos, cubeStartOrientation)
 
 # By default the pyhsics server doesnt do a step unless explicitly requestes
