@@ -30,12 +30,12 @@ planeId = p.loadURDF("plane.urdf")
 # and getEulerFromQuaternion euler angles [yaw, pitch, roll]
 # or a 3x3 matric can also be used
 # Note: euler angles are provided in radients not degree
-cubeStartOrientation = p.getQuaternionFromEuler([1/12 * math.pi,
+r2d2StartOrientation = p.getQuaternionFromEuler([1/12 * math.pi,
                                                  1/6 * math.pi,
                                                  3/2 * math.pi])
 
-cubeStartPos = [0.5, -0.5, 2]
-boxId = p.loadURDF("r2d2.urdf", cubeStartPos, cubeStartOrientation)
+r2d2StartPos = [0.5, -0.5, 2]
+r2d2_id = p.loadURDF("r2d2.urdf", r2d2StartPos, r2d2StartOrientation)
 
 # By default the pyhsics server doesnt do a step unless explicitly requestes
 # with stepSimulation. But you can also run a simulation in real time by letting
@@ -48,8 +48,6 @@ for i in range(1000):
     p.stepSimulation()
     # per default stepSimulation has a timestep of 1/240 seconds
     time.sleep(1./240.)
-
-    cubePos, cubeOrn = p.getBasePositionAndOrientation(boxId)
 
 
 # finally we need to disconnect from
