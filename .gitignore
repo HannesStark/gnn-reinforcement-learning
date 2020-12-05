@@ -1,4 +1,5 @@
 .vscode/
 gym-results/*
+*/gym-results/*
 logs/*
 .ipynb_checkpoints
