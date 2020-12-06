@@ -22,3 +22,10 @@ For Debian:
 [Your desktop on Google Cloud Platform](https://medium.com/google-cloud/linux-gui-on-the-google-cloud-platform-800719ab27c5)
 
 
+
+### Rendering on a server 
+
+This colab notebook might give a working example:
+
+https://colab.research.google.com/github/Stable-Baselines-Team/rl-colab-notebooks/blob/sb3/rl-baselines-zoo.ipynb#scrollTo=OWIDzgJTqShY
+
