@@ -1,2 +1,4 @@
 pybullet
 gym
+torch >= 1.4.0
+stable-baselines3[extra]
