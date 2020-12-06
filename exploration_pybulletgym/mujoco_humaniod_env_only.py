@@ -1,4 +1,5 @@
 import gym  # open ai gym
+# using https://github.com/benelot/bullet-gym
 import pybulletgym  # register PyBullet enviroments with open ai gym
 
 env = gym.make('HumanoidPyBulletEnv-v0')

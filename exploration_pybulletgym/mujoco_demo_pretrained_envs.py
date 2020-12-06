@@ -1,5 +1,6 @@
 import gym  # open ai gym
 from gym import wrappers
+# using https://github.com/benelot/bullet-gym
 import pybulletgym  # register PyBullet enviroments with open ai gym
 import time
 from pybulletgym.tests.roboschool.agents.policies import SmallReactivePolicy
@@ -19,7 +20,7 @@ import pybulletgym.tests.roboschool.agents.ReacherPyBulletEnv_v0_017may as Reach
 import pybulletgym.tests.roboschool.agents.Walker2DPyBulletEnv_v0_2017may as WalkerWeights
 
 
-env_names = ["HopperPyBulletEnv-v0"]
+env_names = ["HalfCheetahPyBulletEnv-v0"]
 
 env_performance = {
     # pendula
