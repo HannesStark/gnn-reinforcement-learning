@@ -22,13 +22,13 @@ class NerveNetGNN(BaseFeaturesExtractor):
     :param robot_structure: 
     """
 
-    def __init__(self, observation_space: gym.Space, robot_structure):
+    def __init__(self, observation_space: gym.Space, robot_structure=None):
         # TODO: either require number of features to be given as argument or extract them from robot_structure
         features_dim = 0
         super(NerveNetGNN, self).__init__(observation_space, features_dim)
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
-        raise NotImplementedError()
+        return self.flatten(observations)
 
 
 # @Hannes: I think we should be able to use ActorCriticPolicy class without any (major) changes
@@ -39,6 +39,7 @@ class NerveNetGNN(BaseFeaturesExtractor):
 # each type of controler node (hips, feet, knees, etc.) to calculate the mean of the policy
 # distribution. However, they to say that in practice they found that one unified controller
 # doesn't hurt the performance, so we might be able to get away with that.
+#
 
 # TODO: Next step: decide which data structure we should use to pass the robot structure to NerveNetGNN
 
