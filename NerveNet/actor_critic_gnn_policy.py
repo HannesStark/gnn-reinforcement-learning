@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import gym
 import numpy as np
 import torch as th
+from stable_baselines3.common.preprocessing import get_flattened_obs_dim
 from torch import nn
 
 from stable_baselines3 import PPO
@@ -23,10 +24,10 @@ class NerveNetGNN(BaseFeaturesExtractor):
     """
 
     def __init__(self, observation_space: gym.Space, robot_structure=None):
+        super(NerveNetGNN, self).__init__(observation_space, get_flattened_obs_dim(observation_space))
         # TODO: either require number of features to be given as argument or extract them from robot_structure
-        features_dim = 0
-        super(NerveNetGNN, self).__init__(observation_space, features_dim)
-
+        self.flatten = nn.Flatten()
+        print(robot_structure)
     def forward(self, observations: th.Tensor) -> th.Tensor:
         return self.flatten(observations)
 
@@ -128,7 +129,6 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
         """
         # Preprocess the observation if needed
         features = self.extract_features(obs)
-        print(features)
         latent_pi, latent_vf = self.mlp_extractor(features)
 
         # Features for sde
