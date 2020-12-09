@@ -9,10 +9,10 @@
 
 import os
 import logging
-from Pathlib import Path
+from pathlib import Path
 import numpy as np
 from bs4 import BeautifulSoup as bs
-from mujoco_model_settings import get_mujoco_model_settings, MULTI_TASK_DICT
+from graph_util.mujoco_model_settings import get_mujoco_model_settings, MULTI_TASK_DICT
 import pybullet_data
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ ALLOWED_JOINT_TYPE = ['hinge', 'free', 'slide']
 
 def parse_mujoco_graph(task_name: str = None,
                        xml_name: str = None,
-                       xml_assets_path: Path = XML_ASSETS_DIR,
+                       xml_assets_path: Path = None,
                        gnn_node_option: str = 'nG,yB',
                        root_connection_option: str = 'nN, Rn, sE',
                        gnn_output_option: str = 'shared',
@@ -92,6 +92,9 @@ def parse_mujoco_graph(task_name: str = None,
         xml_name = XML_DICT[task_name]
 
     assert xml_name is not None, "Either task_name or xml_name must be given."
+
+    if xml_assets_path is None:
+        xml_assets_path = XML_ASSETS_DIR
 
     xml_path = xml_assets_path / xml_name
 

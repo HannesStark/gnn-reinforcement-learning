@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
+from pathlib import Path
 import gym
 import numpy as np
 import torch as th
@@ -10,6 +11,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.type_aliases import Schedule
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor, MlpExtractor, NatureCNN, create_mlp
+from graph_util.mujoco_parser import parse_mujoco_graph
 
 
 class NerveNetGNN(BaseFeaturesExtractor):
@@ -20,14 +22,32 @@ class NerveNetGNN(BaseFeaturesExtractor):
         6th International Conference on Learning Representations, ICLR 2018
 
     :param observation_space:
-    :param robot_structure: 
+    :param env: 
     """
 
-    def __init__(self, observation_space: gym.Space, robot_structure=None):
-        super(NerveNetGNN, self).__init__(observation_space, get_flattened_obs_dim(observation_space))
-        # TODO: either require number of features to be given as argument or extract them from robot_structure
+    def __init__(self,
+                 observation_space: gym.Space,
+                 env=None,
+                 task_name: str = None,
+                 xml_name: str = None,
+                 xml_assets_path: Path = None):
+        super(NerveNetGNN, self).__init__(observation_space,
+                                          get_flattened_obs_dim(observation_space))
+        # TODO: either require number of features to be given as argument or extract them from env
+        self.task_name = task_name
+        self.xml_name = xml_name
+        self.xml_assets_path = xml_assets_path
+
+        if self.xml_name is None:
+            if isinstance(env, gym.Wrapper):
+                env = env.env
+            self.xml_name = env.robot.model_xml
+
+        # graph = parse_mujoco_graph(task_name=self.task_name,
+        #                            xml_name=self.xml_name,
+        #                            xml_assets_path=self.xml_assets_path)
         self.flatten = nn.Flatten()
-        print(robot_structure)
+
     def forward(self, observations: th.Tensor) -> th.Tensor:
         return self.flatten(observations)
 

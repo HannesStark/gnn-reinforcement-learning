@@ -7,6 +7,7 @@ from actor_critic_gnn_policy import ActorCriticGNNPolicy
 
 env = gym.make('AntBulletEnv-v0')
 
-model = PPO(ActorCriticGNNPolicy, env, verbose=1, policy_kwargs={'features_extractor_kwargs': {'robot_structure': env}})
+model = PPO(ActorCriticGNNPolicy, env, verbose=1, policy_kwargs={
+            'features_extractor_kwargs': {'env': env}})
 model.learn(total_timesteps=10000)
 model.save("a2c_ant")

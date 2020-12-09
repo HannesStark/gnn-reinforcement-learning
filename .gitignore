@@ -1,5 +1,6 @@
 # Log files
 logs/*
+graph_logs/*
 MUJUCO_LOG.txt
 
 # Output / model files
