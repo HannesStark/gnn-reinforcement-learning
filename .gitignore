@@ -1,8 +1,33 @@
-.vscode/
+# Log files
+logs/*
+MUJUCO_LOG.txt
+
+# Output / model files
+*.zip
 gym-results/*
 */gym-results/*
 .gym-results/*
 */.gym-results/*
-logs/*
+
+
+# Python
+__pycache__/
+*.py[cod]
 .ipynb_checkpoints
-*.zip
+
+# Pip
+pip-selfcheck.json
+*.whl
+*.egg
+*.egg-info
+
+# Setuptools
+/build
+/dist
+*.eggs
+
+# Visual Studio build files
+.vscode/
+*.vcxproj
+*.vcxproj.filters
+*.sln

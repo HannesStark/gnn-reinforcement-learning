@@ -1,4 +1,6 @@
 pybullet
 gym
-torch >= 1.4.0
-stable-baselines3[extra]
+num2words
+beautifulsoup4
+#torch >= 1.4.0
+#stable-baselines3[extra]

@@ -3,7 +3,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.policies import ActorCriticPolicy
 import pybullet_envs  # register pybullet envs from bullet3
 
-from NerveNet.actor_critic_gnn_policy import ActorCriticGNNPolicy
+from actor_critic_gnn_policy import ActorCriticGNNPolicy
 
 env = gym.make('AntBulletEnv-v0')
 
