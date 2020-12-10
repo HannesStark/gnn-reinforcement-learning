@@ -2,6 +2,7 @@
 logs/*
 graph_logs/*
 MUJUCO_LOG.txt
+.log
 
 # Output / model files
 *.zip
