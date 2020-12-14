@@ -100,59 +100,82 @@ def _extract_tree(xml_soup: BeautifulSoup,
     '''
     TODO: Add docstring
     '''
-    tree = []
-    tree_id = 0
 
     motor_names = _get_motor_names(xml_soup)
     robot_body_soup = xml_soup.find("worldbody").find("body")
 
     root_joints = robot_body_soup.find_all('joint', recursive=False)
 
-    tree.append({"type": "root",
+    root_node = {"type": "root",
                  "is_output_node": False,
                  "name": "root_mujocoroot",
                  "neighbour": [],
-                 "id": tree_id,
+                 "id": 0,
                  "info": robot_body_soup.attrs,
                  "attached_joint_name": [j["name"] for j in root_joints if j["name"] not in motor_names],
                  "attached_joint_info": []
-                 })
+                 }
     # TODO: Add observation size information
 
-    sub_tree = _unpack_node(robot_body_soup, parent_id=0)
+    tree = list(_unpack_node(robot_body_soup,
+                             current_tree={0: root_node},
+                             parent_id=0,
+                             motor_names=motor_names).values())
+    return tree
 
 
 def _unpack_node(node: BeautifulSoup,
-                 id: int,
+                 current_tree: dict,
                  parent_id: int,
                  motor_names: List[str],
-                 allowed_node_types: List[str] = ALLOWED_NODE_TYPES) -> list:
+                 allowed_node_types: List[str] = ALLOWED_NODE_TYPES) -> dict:
     '''
-    TODO: Add docstring
+    This function is used to recursively unpack the xml graph structure of a given node.
+
+    Parameters:
+        node: 
+            The root node from which to unpack the underlying xml tree into a dictionary.
+        current_tree:
+            The dictionary represenation of the tree that has already been unpacked. 
+            - Required to determin the new id to use for the current node.
+            - Will be updated with the root node and its decendent nodes.
+        parent_id: 
+            The id of the parent node for the current node.
+        motor_names: 
+            The list of joint names that are supposed be output_nodes.
+        allowed_node_types: 
+            The list of tag names that should be extracted as decendent nodes
+
+    Returns:
+        A dictionary representation of the xml tree rooted at the given node
+        with "id" and "parent_id" references to encode the relationship structure.
     '''
-    sub_tree = [{
-        "type": node.name,
+    id = max(current_tree.keys()) + 1
+    node_type = node.name
+
+    current_tree[id] = {
+        "type": node_type,
         "is_output_node": node["name"] in motor_names,
         "raw_name": node["name"],
-        "name": node.name + node["name"],
+        "name": node_type + "_" + node["name"],
         "id": id,
         "parent": parent_id,  # to be set later
         "info": node.attrs
-    }]
+    }
 
     child_soups = [child
-                   for child in node.find_all(node_type, recursive=False)
-                   for node_type in allowed_node_types]
-    next_id = id + 1
-    for child in child_soups:
-        sub_tree = _unpack_node(child,
-                                id=next_id,
-                                parent_id=id,
-                                motor_names=motor_names,
-                                allowed_node_types=allowed_node_types)
-        next_id = max([node["id"] for node in sub_tree]) + 1
+                   for allowed_type in allowed_node_types
+                   for child in node.find_all(allowed_type, recursive=False)
+                   ]
 
-    return []
+    for child in child_soups:
+        current_tree.update(_unpack_node(child,
+                                         current_tree=current_tree,
+                                         parent_id=id,
+                                         motor_names=motor_names,
+                                         allowed_node_types=allowed_node_types))
+
+    return current_tree
 
 
 def _get_motor_names(xml_soup):
