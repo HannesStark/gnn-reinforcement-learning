@@ -1,0 +1,20 @@
+Documentation for which observations are returned from a given robot
+
+Walker:
+ - root / robot body
+	- z position
+	- yaw (relative target rotation 1)
+	- yaw (relative target rotation 2)
+	- robot speed x
+	- robot speed y
+	- robot speed z
+	- roll 
+	- pitch 
+ - j (ordered_joints): 1x(2*num_joints) ndarray with (2*8 for Ant-V1)
+   - 0, 2, 4, ... joint position
+   - 1, 3, 5, ... joint angular speed
+    # even elements [0::2] position, scaled to -1..+1 between limits
+    # odd elements  [1::2] angular speed, scaled to show -1..+1
+ - feet_contact 
+   - for every foot 0 or 1
+	

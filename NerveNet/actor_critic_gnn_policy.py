@@ -11,7 +11,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.type_aliases import Schedule
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor, MlpExtractor, NatureCNN, create_mlp
-from graph_util.mujoco_parser import parse_mujoco_graph
+from graph_util.mujoco_parser_nervenet import parse_mujoco_graph
 
 
 class NerveNetGNN(BaseFeaturesExtractor):

@@ -10,6 +10,7 @@ def generate_graph_log(task_name: str):
     dump_dir = Path("graph_logs")
     dump_dir.mkdir(parents=True, exist_ok=True)
 
+    # to be able to load the MUJOXO xml definitions you need to point to your NerveNet repository
     nervenet_dir = Path("C:\\Users\\tsbau\\git\\NerveNet")
 
     graph = parse_mujoco_graph(task_name=task_name, xml_assets_path=(
