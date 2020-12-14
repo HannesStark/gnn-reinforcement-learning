@@ -7,22 +7,18 @@
 from enum import IntEnum, Enum
 
 
-class NodeType:
-    ROOT = 'root'
-    JOINT = 'joint'
-    BODY = 'body'
-
-
-class EdgeType(IntEnum):
-    JOINT_JOINT = 1
-    JOINT_BODY = 6
-    BODY_JOINT = -6
-    BODY_BODY = 3
-    TENDON = 4
-    ROOT_JOINT = 9
-    JOINT_ROOT = -9
-    ROOT_BODY = 10
-    BODY_ROOT = -10
+ALLOWED_NODE_TYPES = ["root", "joint", "body"]
+EDGE_TYPES = {
+    ("root", "root"): 0,
+    ("joint", "joint"): 1,
+    ("joint", "body"): 6,
+    ("body", "joint"): -6,
+    ("root", "joint"): 9,
+    ("joint", "root"): -9,
+    ("root", "body"): 10,
+    ("body", "root"): -10,
+    ("body", "body"): 3
+}
 
 
 XML_DICT = {"Walker2DBulletEnv-v0": "walker2d.xml",
@@ -32,5 +28,3 @@ XML_DICT = {"Walker2DBulletEnv-v0": "walker2d.xml",
             "HumanoidBulletEnv-v0": "humanoid_symmetric.xml",
             "HumanoidFlagrunBulletEnv-v0": "humanoid_symmetric.xml",
             "HumanoidFlagrunHarderBulletEnv-v0": "humanoid_symmetric.xml"}
-
-ALLOWED_NODE_TYPES = [NodeType.ROOT, NodeType.JOINT, NodeType.BODY]

@@ -13,16 +13,17 @@ def generate_graph_log(task_name: str):
     # to be able to load the MUJOXO xml definitions you need to point to your NerveNet repository
     nervenet_dir = Path("C:\\Users\\tsbau\\git\\NerveNet")
 
-    graph = parse_mujoco_graph(task_name=task_name, xml_assets_path=(
+    graph = parse_mujoco_graph(xml_name=XML_DICT[task_name], xml_assets_path=(
         nervenet_dir / "environments" / "assets"))
 
     # make bs4.element.Tag type of xml document serializable
     for i in range(len(graph["tree"])):
-        graph["tree"][i]["raw"] = str(graph["tree"][i]["raw"])
-        if "attached_joint_info" in graph["tree"][i]:
-            for j in range(len(graph["tree"][i]["attached_joint_info"])):
-                graph["tree"][i]["attached_joint_info"][j]["raw"] = str(
-                    graph["tree"][i]["attached_joint_info"][j]["raw"])
+        if "raw" in graph["tree"][i]:
+            graph["tree"][i]["raw"] = str(graph["tree"][i]["raw"])
+            if "attached_joint_info" in graph["tree"][i]:
+                for j in range(len(graph["tree"][i]["attached_joint_info"])):
+                    graph["tree"][i]["attached_joint_info"][j]["raw"] = str(
+                        graph["tree"][i]["attached_joint_info"][j]["raw"])
 
     # make numpy array serializable
     graph['relation_matrix'] = graph['relation_matrix'].tolist()

@@ -17,7 +17,7 @@ from enum import IntEnum, Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
-from graph_util.mujoco_parser_settings import XML_DICT, ALLOWED_NODE_TYPES, NodeType, EdgeType
+from graph_util.mujoco_parser_settings import XML_DICT, ALLOWED_NODE_TYPES, EDGE_TYPES
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -29,7 +29,8 @@ XML_ASSETS_DIR = Path(pybullet_data.getDataPath()) / "mjcf"
 
 def parse_mujoco_graph(task_name: str = None,
                        xml_name: str = None,
-                       xml_assets_path: Path = None):
+                       xml_assets_path: Path = None,
+                       allowed_node_types: List[str] = ALLOWED_NODE_TYPES):
     '''
     TODO: add documentation
 
@@ -50,16 +51,17 @@ def parse_mujoco_graph(task_name: str = None,
                 A dictionary representation of the parsed XML
             "relation_matrix": ndarray of shape (num_nodes, num_nodes)
                 A representation of the adjacency matrix for the parsed graph.
-                Non-Zero entries are edge conections of different types as defined by EdgeType
+                Non-Zero entries are edge conections of different types as defined by EDGE_TYPES
             "node_type_dict": dict
                 Keys: The names of the node types
                 Values: The list of the node ids that are of this node type
             "output_type_dict": dict
-                Keys: The prefix of the motor names (e.g. "hip", "ankle")
+                Specifies which outputs should use the same controller network
+                Keys: The name of the control group (e.g. "hip", "ankle")
                 Values: The list of the node ids that are of this motor type
             "output_list": list
                 The list of node ids that correspond to each of the motors.
-                The order exactly matches the motor order  specified in the xml file.
+                The order exactly matches the motor order specified in the xml file.
             "input_dict": dict
                 Keys: node ids
                 Value: list of ids in observation vector that belong to the node
@@ -81,27 +83,40 @@ def parse_mujoco_graph(task_name: str = None,
     with open(str(xml_path), "r") as xml_file:
         xml_soup = BeautifulSoup(xml_file.read(), "xml")
 
-    _extract_tree(xml_soup)
+    tree = __extract_tree(xml_soup)
+
+    relation_matrix = __build_relation_matrix(tree)
+
+    node_type_dict = {node_type: [node["id"] for node in tree if node["type"] == node_type]
+                      for node_type in allowed_node_types}
+
+    output_type_dict, output_list = __get_output_mapping(tree)
+
+    # TODO
+    input_dict = {}
+    debug_info = {}
+    node_parameters = {}
+    para_size_dict = {}
 
     return dict(tree=tree,
                 relation_matrix=relation_matrix,
                 node_type_dict=node_type_dict,
                 output_type_dict=output_type_dict,
-                input_dict=input_dict,
                 output_list=output_list,
+                input_dict=input_dict,
                 debug_info=debug_info,
                 node_parameters=node_parameters,
                 para_size_dict=para_size_dict,
                 num_nodes=len(tree))
 
 
-def _extract_tree(xml_soup: BeautifulSoup,
-                  allowed_node_types: List[str] = ALLOWED_NODE_TYPES):
+def __extract_tree(xml_soup: BeautifulSoup,
+                   allowed_node_types: List[str] = ALLOWED_NODE_TYPES):
     '''
     TODO: Add docstring
     '''
 
-    motor_names = _get_motor_names(xml_soup)
+    motor_names = __get_motor_names(xml_soup)
     robot_body_soup = xml_soup.find("worldbody").find("body")
 
     root_joints = robot_body_soup.find_all('joint', recursive=False)
@@ -111,24 +126,25 @@ def _extract_tree(xml_soup: BeautifulSoup,
                  "name": "root_mujocoroot",
                  "neighbour": [],
                  "id": 0,
+                 "parent": 0,
                  "info": robot_body_soup.attrs,
                  "attached_joint_name": [j["name"] for j in root_joints if j["name"] not in motor_names],
                  "attached_joint_info": []
                  }
     # TODO: Add observation size information
 
-    tree = list(_unpack_node(robot_body_soup,
-                             current_tree={0: root_node},
-                             parent_id=0,
-                             motor_names=motor_names).values())
+    tree = list(__unpack_node(robot_body_soup,
+                              current_tree={0: root_node},
+                              parent_id=0,
+                              motor_names=motor_names).values())
     return tree
 
 
-def _unpack_node(node: BeautifulSoup,
-                 current_tree: dict,
-                 parent_id: int,
-                 motor_names: List[str],
-                 allowed_node_types: List[str] = ALLOWED_NODE_TYPES) -> dict:
+def __unpack_node(node: BeautifulSoup,
+                  current_tree: dict,
+                  parent_id: int,
+                  motor_names: List[str],
+                  allowed_node_types: List[str] = ALLOWED_NODE_TYPES) -> dict:
     '''
     This function is used to recursively unpack the xml graph structure of a given node.
 
@@ -169,19 +185,61 @@ def _unpack_node(node: BeautifulSoup,
                    ]
 
     for child in child_soups:
-        current_tree.update(_unpack_node(child,
-                                         current_tree=current_tree,
-                                         parent_id=id,
-                                         motor_names=motor_names,
-                                         allowed_node_types=allowed_node_types))
+        current_tree.update(__unpack_node(child,
+                                          current_tree=current_tree,
+                                          parent_id=id,
+                                          motor_names=motor_names,
+                                          allowed_node_types=allowed_node_types))
 
     return current_tree
 
 
-def _get_motor_names(xml_soup):
+def __get_motor_names(xml_soup: BeautifulSoup) -> List[str]:
     motors = xml_soup.find('actuator').find_all('motor')
     name_list = [motor['joint'] for motor in motors]
     return name_list
+
+
+def __build_relation_matrix(tree: List[dict]) -> np.ndarray:
+    num_node = len(tree)
+    relation_matrix = np.zeros([num_node, num_node], dtype=np.int)
+
+    # nodes with outgoing edge
+    for node_out in tree:
+        # nodes with incoming edge
+        for node_in in tree:
+            if node_in["parent"] == node_out["id"]:
+                # direction out -> in
+                relation_matrix[node_out["id"]][node_in["id"]] = EDGE_TYPES[(
+                    node_out["type"], node_in["type"])]
+
+                # direction in -> out
+                relation_matrix[node_in["id"]][node_out["id"]] = EDGE_TYPES[(
+                    node_in["type"], node_out["type"])]
+
+    return relation_matrix
+
+
+def __get_output_mapping(tree: List[dict]) -> Tuple[dict, List[int]]:
+    '''
+    TODO: diffentiate between different control types:
+        - shared
+            The same controller network for the same/similar type of motors
+            TODO: specify what exactly is "similiar"
+        - seperate
+            Different controller networks for every output
+        - unified:
+            The same controller network for all outputs
+    '''
+    output_nodes = [node for node in tree if node["is_output_node"]]
+    output_list = [node["id"] for node in output_nodes]
+    joint_types = [node["raw_name"].split("_")[0] for node in output_nodes]
+    output_type_dict = {
+        joint_type: [node["id"]
+                     for node in output_nodes if joint_type in node["raw_name"]]
+        for joint_type in joint_types
+    }
+    return output_type_dict, output_list
 
 
 if __name__ == "__main__":
