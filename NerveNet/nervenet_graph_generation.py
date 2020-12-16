@@ -1,4 +1,6 @@
-from graph_util.mujoco_parser_nervenet import parse_mujoco_graph, OB_MAP, XML_DICT
+from graph_util.mujoco_parser_nervenet import OB_MAP, XML_DICT
+#from graph_util.mujoco_parser_nervenet import parse_mujoco_graph
+from graph_util.mujoco_parser import parse_mujoco_graph
 import json
 from pathlib import Path
 

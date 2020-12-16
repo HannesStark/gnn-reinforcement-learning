@@ -17,7 +17,7 @@ from enum import IntEnum, Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
-from graph_util.mujoco_parser_settings import XML_DICT, ALLOWED_NODE_TYPES, EDGE_TYPES
+from graph_util.mujoco_parser_settings import XML_DICT, ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -66,8 +66,6 @@ def parse_mujoco_graph(task_name: str = None,
                 Keys: node ids
                 Value: list of ids in observation vector that belong to the node
             "node_parameters"
-
-
     '''
 
     if task_name is not None:  # task_name takes priority
@@ -87,7 +85,9 @@ def parse_mujoco_graph(task_name: str = None,
 
     relation_matrix = __build_relation_matrix(tree)
 
-    node_type_dict = {node_type: [node["id"] for node in tree if node["type"] == node_type]
+    # group nodes by node type
+    node_type_dict = {node_type: [node["id"]
+                                  for node in tree if node["type"] == node_type]
                       for node_type in allowed_node_types}
 
     output_type_dict, output_list = __get_output_mapping(tree)
@@ -129,7 +129,8 @@ def __extract_tree(xml_soup: BeautifulSoup,
                  "parent": 0,
                  "info": robot_body_soup.attrs,
                  "attached_joint_name": [j["name"] for j in root_joints if j["name"] not in motor_names],
-                 "attached_joint_info": []
+                 "attached_joint_info": [],
+                 "motor_names": motor_names
                  }
     # TODO: Add observation size information
 
@@ -137,6 +138,7 @@ def __extract_tree(xml_soup: BeautifulSoup,
                               current_tree={0: root_node},
                               parent_id=0,
                               motor_names=motor_names).values())
+
     return tree
 
 
@@ -200,7 +202,15 @@ def __get_motor_names(xml_soup: BeautifulSoup) -> List[str]:
     return name_list
 
 
-def __build_relation_matrix(tree: List[dict]) -> np.ndarray:
+def __build_relation_matrix(tree: List[dict], self_loop: bool = False) -> np.ndarray:
+    '''
+    TODO better docstring
+
+    Parameters:
+        "tree": 
+            The dictionary representation of the parsed XML to build the relation matrix from.
+
+    '''
     num_node = len(tree)
     relation_matrix = np.zeros([num_node, num_node], dtype=np.int)
 
@@ -220,25 +230,62 @@ def __build_relation_matrix(tree: List[dict]) -> np.ndarray:
     return relation_matrix
 
 
-def __get_output_mapping(tree: List[dict]) -> Tuple[dict, List[int]]:
+def __get_output_mapping(tree: List[dict], controller_type: ControllerType = ControllerType.SHARED) -> Tuple[dict, List[int]]:
     '''
-    TODO: diffentiate between different control types:
-        - shared
-            The same controller network for the same/similar type of motors
-            TODO: specify what exactly is "similiar"
-        - seperate
-            Different controller networks for every output
-        - unified:
-            The same controller network for all outputs
+    Parameters:
+        "tree": 
+            The dictionary representation of the parsed XML to extract the output mapping from.
+        "controller_type": 
+            Wang et al. propose different sharing settings for the controller networks that generate
+            the action from the final hidden presentation of actuator/motor/output nodes.
+                - shared
+                    The same controller network for the same/similar type of motors TODO: specify what exactly is "similiar"
+                - seperate
+                    Different controller networks for every output
+                - unified:
+                    The same controller network for all outputs
+    Returns:
+        "output_type_dict": dict
+            A mapping of output nodes into controll groups. 
+            Nodes of the same controll group are supposed to share the same controller network.
+            Keys: The identifier of the group
+            Values: The list of nodes of this group
+        "output_list": list[str]
+            The list of all output nodes in the order
     '''
-    output_nodes = [node for node in tree if node["is_output_node"]]
-    output_list = [node["id"] for node in output_nodes]
-    joint_types = [node["raw_name"].split("_")[0] for node in output_nodes]
-    output_type_dict = {
-        joint_type: [node["id"]
-                     for node in output_nodes if joint_type in node["raw_name"]]
-        for joint_type in joint_types
-    }
+
+    # we need to use the exact same order as motors are defined in the xml
+    # --> names in the correct order are in root node
+    # --> indexing first improves sorting afterwards
+    motor_index_map = {v: i for i, v in enumerate(tree[0]["motor_names"])}
+
+    output_nodes = {node["raw_name"]: node
+                    for node in tree if node["is_output_node"]}
+    output_nodes = dict(sorted(output_nodes.items(),
+                               key=lambda pair: motor_index_map[pair[0]]))
+
+    output_list = [node["id"] for node in output_nodes.values()]
+
+    # TODO currently we just type/group together based on the name prefix....
+    # either we need to document this as "feature" or find a better way to do this
+    joint_types = set([node_name.split("_")[0]
+                       for node_name in output_nodes.keys()])
+
+    if controller_type == ControllerType.SHARED:
+        output_type_dict = {
+            joint_type: [node["id"]
+                         for node_name, node in output_nodes.items() if joint_type in node_name]
+            for joint_type in joint_types
+        }
+    elif controller_type == ControllerType.SEPERATE:
+        output_type_dict = {node["raw_name"]: node["id"]
+                            for node in output_nodes}
+    elif controller_type == ControllerType.UNIFIED:
+        output_type_dict['unified'] = output_list
+    else:
+        raise NotImplementedError(
+            "Unknown controller type: %s" % controller_type)
+
     return output_type_dict, output_list
 
 

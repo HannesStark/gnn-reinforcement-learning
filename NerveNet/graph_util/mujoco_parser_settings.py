@@ -28,3 +28,9 @@ XML_DICT = {"Walker2DBulletEnv-v0": "walker2d.xml",
             "HumanoidBulletEnv-v0": "humanoid_symmetric.xml",
             "HumanoidFlagrunBulletEnv-v0": "humanoid_symmetric.xml",
             "HumanoidFlagrunHarderBulletEnv-v0": "humanoid_symmetric.xml"}
+
+
+class ControllerType(IntEnum):
+    SHARED = 0,
+    SEPERATE = 1,
+    UNIFIED = 2
