@@ -1,7 +1,7 @@
 # Log files
-logs/*
-graph_logs/*
-graph_logs_new/*
+logs
+graph_logs
+graph_logs_new
 MUJUCO_LOG.txt
 .log
 
@@ -34,3 +34,7 @@ pip-selfcheck.json
 *.vcxproj
 *.vcxproj.filters
 *.sln
+
+#
+.idea
+bullet3

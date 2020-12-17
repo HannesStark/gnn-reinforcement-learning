@@ -13,7 +13,8 @@ def generate_graph_log(task_name: str):
     dump_dir.mkdir(parents=True, exist_ok=True)
 
     # to be able to load the MUJOXO xml definitions you need to point to your NerveNet repository
-    nervenet_dir = Path("C:\\Users\\tsbau\\git\\NerveNet")
+    nervenet_dir = Path("C:\\Users\\HannesStark\\projects\\NerveNet")
+    #nervenet_dir = Path("C:\\Users\\tsbau\\git\\NerveNet")
 
     graph = parse_mujoco_graph(xml_name=XML_DICT[task_name], xml_assets_path=(
         nervenet_dir / "environments" / "assets"))
@@ -39,5 +40,6 @@ def generate_graph_log(task_name: str):
 for task_name in XML_DICT.keys():
     try:
         generate_graph_log(task_name)
-    except:
+    except Exception as e:
         print(f"Could not generate graph log for {task_name}.")
+        print(e)
