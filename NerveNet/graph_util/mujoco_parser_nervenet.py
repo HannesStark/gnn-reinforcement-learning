@@ -21,8 +21,6 @@ logger.setLevel(logging.INFO)
 __all__ = ['parse_mujoco_graph']
 
 XML_ASSETS_DIR = Path(pybullet_data.getDataPath()) / "mjcf"
-print("XML_ASSETS_DIR", XML_ASSETS_DIR)
-
 
 '''
     Definition of nodes:
@@ -59,7 +57,7 @@ def parse_mujoco_graph(task_name: str = None,
                        xml_name: str = None,
                        xml_assets_path: Path = None,
                        gnn_node_option: str = 'nG,yB',
-                       root_connection_option: str = 'nN, Rn, sE',
+                       root_connection_option: str = 'yN, Rb, sE',
                        gnn_output_option: str = 'shared',
                        gnn_embedding_option: str = 'shared'):
     '''

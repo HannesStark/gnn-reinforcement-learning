@@ -17,7 +17,7 @@ from enum import IntEnum, Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
-from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType, RootConnectionOption
+from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType, RootRelationOption
 from graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
 from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 
@@ -32,20 +32,33 @@ XML_ASSETS_DIR = Path(pybullet_data.getDataPath()) / "mjcf"
 def parse_mujoco_graph(task_name: str = None,
                        xml_name: str = None,
                        xml_assets_path: Path = None,
-                       allowed_node_types: List[str] = ALLOWED_NODE_TYPES):
+                       allowed_node_types: List[str] = ALLOWED_NODE_TYPES,
+                       use_sibling_relations: bool = True,
+                       root_relation_option: RootRelationOption = RootRelationOption.BODY):
     '''
     TODO: add documentation
 
     Parameters:
-        task_name:
+        "task_name":
             The name of the task to parse the graph structure from.
             Takes priority over xml_name.
-        xml_name:
+        "xml_name":
             The name of the xml file to parse the graph structure from.
             Either xml_name or task_name must be specified.
-        xml_assets_path:
+        "xml_assets_path":
             Specifies in which directory to look for the mujoco (mjcf) xml file.
             If none, default will be set to the pybullet data path.
+        "use_sibling_relations":
+            Whether to use sibling relations between nodes to build the relation (adjacency) matrix  
+            or to only use parent-child relationships
+        "root_relation_option":
+                Specifies which other nodes the root node should additionally be connected to:
+                    - RootRelationOption.NONE:
+                        No other nodes 
+                    - RootRelationOption.BODY:
+                        All nodes of type "body" are connected to root
+                    - RootRelationOption.ALL:
+                        All nodes are connected to root
 
     Returns:
         A dictionary containing details about the parsed graph structure:
@@ -90,7 +103,9 @@ def parse_mujoco_graph(task_name: str = None,
 
     tree = __extract_tree(xml_soup)
 
-    relation_matrix = __build_relation_matrix(tree)
+    relation_matrix = __build_relation_matrix(tree,
+                                              use_sibling_relations=use_sibling_relations,
+                                              root_relation_option=root_relation_option)
 
     # group nodes by node type
     node_type_dict = {node_type: [node["id"]
@@ -229,14 +244,32 @@ def __get_motor_names(xml_soup: BeautifulSoup) -> List[str]:
 
 
 def __build_relation_matrix(tree: List[dict],
-                            sibbling_connections: bool = False,
-                            root_connection_option: RootConnectionOption = RootConnectionOption.NONE) -> np.ndarray:
+                            use_sibling_relations: bool = True,
+                            root_relation_option: RootRelationOption = RootRelationOption.BODY) -> np.ndarray:
     '''
     TODO better docstring
 
     Parameters:
         "tree": 
             The dictionary representation of the parsed XML to build the relation matrix from.
+        "use_sibling_relations":
+            Whether to use sibling relations between nodes to build the relation (adjacency) matrix  
+            or to only use parent-child relationships
+        "root_relation_option":
+            The root node is an abstract node and not part of the kinematic tree described by the XML structure.
+            Therefore we need to define which nodes it is in relation/connected to.
+            At a minimum it should have the same relations as the main body (e.g. "torso") node does.
+            With this option we can additionally specify which other nodes it should also be connected to:
+                - RootRelationOption.NONE:
+                    No other nodes 
+                - RootRelationOption.BODY:
+                    All nodes of type "body" are connected to root
+                - RootRelationOption.ALL:
+                    All nodes are connected to root
+    Returns:
+        "relation_matrix": ndarray of shape (num_nodes, num_nodes)
+                A representation of the adjacency matrix for the parsed graph.
+                Non-Zero entries are edge conections of different types as defined by EDGE_TYPES
 
     '''
     num_node = len(tree)
@@ -265,7 +298,8 @@ def __build_relation_matrix(tree: List[dict],
                           for node in tree
                           if node["parent"] in root_children_ids
                           and node["type"] == "body"]
-    # disconnect root with children
+
+    # disconnect root with its children
     for child_node_id in root_children_ids:
         relation_matrix[child_node_id][0] = 0
         relation_matrix[0][child_node_id] = 0
@@ -276,6 +310,37 @@ def __build_relation_matrix(tree: List[dict],
             grandchild_node["type"], "root")]
         relation_matrix[0][grandchild_node["id"]] = EDGE_TYPES[(
             "root", grandchild_node["type"])]
+
+    if use_sibling_relations:
+        sibling_pairs = [(node_1, node_2)
+                         for node_1 in tree
+                         for node_2 in tree
+                         if node_1["parent"] == node_2["parent"]
+                         and node_1["id"] != node_2["id"]
+                         and node_1["type"] != "root"
+                         and node_2["type"] != "root"]
+        for node_1, node_2 in sibling_pairs:
+            relation_matrix[node_1["id"]][node_2["id"]] = EDGE_TYPES[(
+                node_1["type"], node_2["type"])]
+            relation_matrix[node_2["id"]][node_1["id"]] = EDGE_TYPES[(
+                node_2["type"], node_1["type"])]
+
+    if root_relation_option != RootRelationOption.NONE:
+        if root_relation_option == RootRelationOption.ALL:
+            root_relation_nodes = tree
+        elif root_relation_option == RootRelationOption.BODY:
+            root_relation_nodes = [node
+                                   for node in tree
+                                   if node["type"] == "body"]
+        else:
+            raise NotImplementedError("Unknown root relation option")
+
+        for node in root_relation_nodes:
+            if node["type"] != "root":
+                relation_matrix[node["id"]][0] = EDGE_TYPES[(
+                    node["type"], "root")]
+                relation_matrix[0][node["id"]] = EDGE_TYPES[(
+                    "root", node["type"])]
 
     return relation_matrix
 

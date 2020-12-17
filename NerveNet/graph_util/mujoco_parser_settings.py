@@ -36,7 +36,7 @@ class ControllerType(IntEnum):
     UNIFIED = 2
 
 
-class RootConnectionOption(IntEnum):
+class RootRelationOption(IntEnum):
     NONE = 0,
     BODY = 1,
     ALL = 2,
