@@ -17,7 +17,9 @@ from enum import IntEnum, Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
-from graph_util.mujoco_parser_settings import XML_DICT, ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType
+from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType
+from graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
+from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -69,7 +71,12 @@ def parse_mujoco_graph(task_name: str = None,
     '''
 
     if task_name is not None:  # task_name takes priority
-        xml_name = XML_DICT[task_name]
+        if task_name in NERVENET_XML_DICT:
+            xml_name = NERVENET_XML_DICT[task_name]
+        elif task_name in NERVENET_XML_DICT:
+            xml_name = PYBULLET_XML_DICT[task_name]
+        else:
+            raise NotImplementedError(f"No task named {task_name} defined.")
 
     assert xml_name is not None, "Either task_name or xml_name must be given."
 

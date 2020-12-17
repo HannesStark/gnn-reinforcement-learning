@@ -12,6 +12,7 @@ for task_name in NERVENET_XML_DICT.keys():
         generate_graph_log(
             task_name,
             xml_assets_path=nervenet_assets_dir,
-            use_nervenet_parser=True)
+            use_nervenet_parser=True,
+            dump_dir=Path("logs_parser_nervenet"))
     except:
         print(f"Could not generate graph log for {task_name}.")

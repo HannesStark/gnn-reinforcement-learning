@@ -12,14 +12,12 @@ for task_name in NERVENET_XML_DICT.keys():
     try:
         generate_graph_log(
             task_name,
-            xml_assets_path=nervenet_assets_dir,
-            use_nervenet_parser=True)
+            xml_assets_path=nervenet_assets_dir)
     except:
         print(f"Could not generate graph log for {task_name}.")
 
 for task_name in PYBULLET_XML_DICT.keys():
     try:
-        generate_graph_log(task_name,
-                           dump_dir=Path("graph_logs_new"))
+        generate_graph_log(task_name)
     except:
         print(f"Could not generate graph log for {task_name}.")

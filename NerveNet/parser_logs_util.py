@@ -8,7 +8,7 @@ from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 
 def generate_graph_log(task_name: str,
                        xml_assets_path: Path = None,
-                       dump_dir: Path = Path("graph_logs"),
+                       dump_dir: Path = Path("logs_parser"),
                        use_nervenet_parser: bool = False):
 
     dump_dir.mkdir(parents=True, exist_ok=True)
