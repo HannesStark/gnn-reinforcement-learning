@@ -1,0 +1,438 @@
+{
+    "tree": [
+        {
+            "type": "root",
+            "is_output_node": false,
+            "name": "root_mujocoroot",
+            "neighbour": [],
+            "id": 0,
+            "parent": 0,
+            "info": {
+                "name": "rootBody",
+                "pos": "0 0 .01"
+            },
+            "attached_joint_name": [],
+            "attached_joint_info": [],
+            "motor_names": [
+                "rootjoint",
+                "joint_1",
+                "joint_2",
+                "joint_3",
+                "joint_4",
+                "joint_5"
+            ]
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "rootBody",
+            "name": "body_rootBody",
+            "id": 1,
+            "parent": 0,
+            "info": {
+                "name": "rootBody",
+                "pos": "0 0 .01"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "rootjoint",
+            "name": "joint_rootjoint",
+            "id": 2,
+            "parent": 1,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "rootjoint",
+                "pos": "0 0 0",
+                "range": "-3.14 3.14",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "body_1",
+            "name": "body_body_1",
+            "id": 3,
+            "parent": 1,
+            "info": {
+                "name": "body_1",
+                "pos": "0.1 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "joint_1",
+            "name": "joint_joint_1",
+            "id": 4,
+            "parent": 3,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "joint_1",
+                "pos": "0 0 0",
+                "range": "-3.0 3.0",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "body_2",
+            "name": "body_body_2",
+            "id": 5,
+            "parent": 3,
+            "info": {
+                "name": "body_2",
+                "pos": "0.1 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "joint_2",
+            "name": "joint_joint_2",
+            "id": 6,
+            "parent": 5,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "joint_2",
+                "pos": "0 0 0",
+                "range": "-3.0 3.0",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "body_3",
+            "name": "body_body_3",
+            "id": 7,
+            "parent": 5,
+            "info": {
+                "name": "body_3",
+                "pos": "0.1 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "joint_3",
+            "name": "joint_joint_3",
+            "id": 8,
+            "parent": 7,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "joint_3",
+                "pos": "0 0 0",
+                "range": "-3.0 3.0",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "body_4",
+            "name": "body_body_4",
+            "id": 9,
+            "parent": 7,
+            "info": {
+                "name": "body_4",
+                "pos": "0.1 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "joint_4",
+            "name": "joint_joint_4",
+            "id": 10,
+            "parent": 9,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "joint_4",
+                "pos": "0 0 0",
+                "range": "-3.0 3.0",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "body_5",
+            "name": "body_body_5",
+            "id": 11,
+            "parent": 9,
+            "info": {
+                "name": "body_5",
+                "pos": "0.1 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "joint_5",
+            "name": "joint_joint_5",
+            "id": 12,
+            "parent": 11,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "joint_5",
+                "pos": "0 0 0",
+                "range": "-3.0 3.0",
+                "type": "hinge"
+            }
+        }
+    ],
+    "relation_matrix": [
+        [
+            0,
+            10,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            -10,
+            0,
+            -6,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            3,
+            0,
+            0,
+            -6,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6,
+            3,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6,
+            3,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0
+        ]
+    ],
+    "node_type_dict": {
+        "root": [
+            0
+        ],
+        "joint": [
+            2,
+            4,
+            6,
+            8,
+            10,
+            12
+        ],
+        "body": [
+            1,
+            3,
+            5,
+            7,
+            9,
+            11
+        ]
+    },
+    "output_type_dict": {
+        "joint": [
+            2,
+            4,
+            6,
+            8,
+            10,
+            12
+        ],
+        "rootjoint": [
+            2
+        ]
+    },
+    "output_list": [
+        2,
+        4,
+        6,
+        8,
+        10,
+        12
+    ],
+    "input_dict": {},
+    "debug_info": {},
+    "node_parameters": {},
+    "para_size_dict": {},
+    "num_nodes": 13
+}

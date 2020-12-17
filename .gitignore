@@ -34,3 +34,7 @@ pip-selfcheck.json
 *.vcxproj
 *.vcxproj.filters
 *.sln
+
+#
+.idea
+bullet3

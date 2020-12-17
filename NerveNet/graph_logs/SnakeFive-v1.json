@@ -1,0 +1,431 @@
+{
+    "tree": [
+        {
+            "type": "root",
+            "is_output_node": false,
+            "name": "root_mujocoroot",
+            "neighbour": [],
+            "id": 0,
+            "parent": 0,
+            "info": {
+                "name": "podBody_1",
+                "pos": "0 0 0"
+            },
+            "attached_joint_name": [
+                "slider1",
+                "slider2",
+                "rot_1"
+            ],
+            "attached_joint_info": [],
+            "motor_names": [
+                "rot_2",
+                "rot_3",
+                "rot_4",
+                "rot_5"
+            ]
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "podBody_1",
+            "name": "body_podBody_1",
+            "id": 1,
+            "parent": 0,
+            "info": {
+                "name": "podBody_1",
+                "pos": "0 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": false,
+            "raw_name": "slider1",
+            "name": "joint_slider1",
+            "id": 2,
+            "parent": 1,
+            "info": {
+                "axis": "1 0 0",
+                "name": "slider1",
+                "pos": "0 0 0",
+                "type": "slide"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": false,
+            "raw_name": "slider2",
+            "name": "joint_slider2",
+            "id": 3,
+            "parent": 1,
+            "info": {
+                "axis": "0 1 0",
+                "name": "slider2",
+                "pos": "0 0 0",
+                "type": "slide"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": false,
+            "raw_name": "rot_1",
+            "name": "joint_rot_1",
+            "id": 4,
+            "parent": 1,
+            "info": {
+                "axis": "0 0 1",
+                "name": "rot_1",
+                "pos": "-1.5 0 0",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "podBody_2",
+            "name": "body_podBody_2",
+            "id": 5,
+            "parent": 1,
+            "info": {
+                "name": "podBody_2",
+                "pos": "-1 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "rot_2",
+            "name": "joint_rot_2",
+            "id": 6,
+            "parent": 5,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "rot_2",
+                "pos": "0 0 0",
+                "range": "-100 100",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "podBody_3",
+            "name": "body_podBody_3",
+            "id": 7,
+            "parent": 5,
+            "info": {
+                "name": "podBody_3",
+                "pos": "-1 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "rot_3",
+            "name": "joint_rot_3",
+            "id": 8,
+            "parent": 7,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "rot_3",
+                "pos": "0 0 0",
+                "range": "-100 100",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "podBody_4",
+            "name": "body_podBody_4",
+            "id": 9,
+            "parent": 7,
+            "info": {
+                "name": "podBody_4",
+                "pos": "-1 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "rot_4",
+            "name": "joint_rot_4",
+            "id": 10,
+            "parent": 9,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "rot_4",
+                "pos": "0 0 0",
+                "range": "-100 100",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "podBody_5",
+            "name": "body_podBody_5",
+            "id": 11,
+            "parent": 9,
+            "info": {
+                "name": "podBody_5",
+                "pos": "-1 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "rot_5",
+            "name": "joint_rot_5",
+            "id": 12,
+            "parent": 11,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "rot_5",
+                "pos": "0 0 0",
+                "range": "-100 100",
+                "type": "hinge"
+            }
+        }
+    ],
+    "relation_matrix": [
+        [
+            0,
+            10,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            -10,
+            0,
+            -6,
+            -6,
+            -6,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            -6,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6,
+            3,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6,
+            3,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0
+        ]
+    ],
+    "node_type_dict": {
+        "root": [
+            0
+        ],
+        "joint": [
+            2,
+            3,
+            4,
+            6,
+            8,
+            10,
+            12
+        ],
+        "body": [
+            1,
+            5,
+            7,
+            9,
+            11
+        ]
+    },
+    "output_type_dict": {
+        "rot": [
+            6,
+            8,
+            10,
+            12
+        ]
+    },
+    "output_list": [
+        6,
+        8,
+        10,
+        12
+    ],
+    "input_dict": {},
+    "debug_info": {},
+    "node_parameters": {},
+    "para_size_dict": {},
+    "num_nodes": 13
+}

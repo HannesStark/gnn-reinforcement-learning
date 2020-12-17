@@ -1,0 +1,653 @@
+{
+    "tree": [
+        {
+            "type": "root",
+            "is_output_node": false,
+            "name": "root_mujocoroot",
+            "neighbour": [],
+            "id": 0,
+            "parent": 0,
+            "info": {
+                "name": "torso",
+                "pos": "0 0 .7"
+            },
+            "attached_joint_name": [
+                "rootx",
+                "rootz",
+                "rooty"
+            ],
+            "attached_joint_info": [],
+            "motor_names": [
+                "bthigh",
+                "bshin",
+                "bfoot",
+                "fthigh",
+                "fshin",
+                "ffoot"
+            ]
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "torso",
+            "name": "body_torso",
+            "id": 1,
+            "parent": 0,
+            "info": {
+                "name": "torso",
+                "pos": "0 0 .7"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": false,
+            "raw_name": "rootx",
+            "name": "joint_rootx",
+            "id": 2,
+            "parent": 1,
+            "info": {
+                "armature": "0",
+                "axis": "1 0 0",
+                "damping": "0",
+                "limited": "false",
+                "name": "rootx",
+                "pos": "0 0 0",
+                "stiffness": "0",
+                "type": "slide"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": false,
+            "raw_name": "rootz",
+            "name": "joint_rootz",
+            "id": 3,
+            "parent": 1,
+            "info": {
+                "armature": "0",
+                "axis": "0 0 1",
+                "damping": "0",
+                "limited": "false",
+                "name": "rootz",
+                "pos": "0 0 0",
+                "stiffness": "0",
+                "type": "slide"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": false,
+            "raw_name": "rooty",
+            "name": "joint_rooty",
+            "id": 4,
+            "parent": 1,
+            "info": {
+                "armature": "0",
+                "axis": "0 1 0",
+                "damping": "0",
+                "limited": "false",
+                "name": "rooty",
+                "pos": "0 0 0",
+                "stiffness": "0",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": true,
+            "raw_name": "bthigh",
+            "name": "body_bthigh",
+            "id": 5,
+            "parent": 1,
+            "info": {
+                "name": "bthigh",
+                "pos": "-.5 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "bthigh",
+            "name": "joint_bthigh",
+            "id": 6,
+            "parent": 5,
+            "info": {
+                "axis": "0 1 0",
+                "damping": "6",
+                "name": "bthigh",
+                "pos": "0 0 0",
+                "range": "-.52 1.05",
+                "stiffness": "240",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": true,
+            "raw_name": "bshin",
+            "name": "body_bshin",
+            "id": 7,
+            "parent": 5,
+            "info": {
+                "name": "bshin",
+                "pos": ".16 0 -.25"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "bshin",
+            "name": "joint_bshin",
+            "id": 8,
+            "parent": 7,
+            "info": {
+                "axis": "0 1 0",
+                "damping": "4.5",
+                "name": "bshin",
+                "pos": "0 0 0",
+                "range": "-.785 .785",
+                "stiffness": "180",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": true,
+            "raw_name": "bfoot",
+            "name": "body_bfoot",
+            "id": 9,
+            "parent": 7,
+            "info": {
+                "name": "bfoot",
+                "pos": "-.28 0 -.14"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "bfoot",
+            "name": "joint_bfoot",
+            "id": 10,
+            "parent": 9,
+            "info": {
+                "axis": "0 1 0",
+                "damping": "3",
+                "name": "bfoot",
+                "pos": "0 0 0",
+                "range": "-.4 .785",
+                "stiffness": "120",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": true,
+            "raw_name": "fthigh",
+            "name": "body_fthigh",
+            "id": 11,
+            "parent": 1,
+            "info": {
+                "name": "fthigh",
+                "pos": ".5 0 0"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "fthigh",
+            "name": "joint_fthigh",
+            "id": 12,
+            "parent": 11,
+            "info": {
+                "axis": "0 1 0",
+                "damping": "4.5",
+                "name": "fthigh",
+                "pos": "0 0 0",
+                "range": "-1 .7",
+                "stiffness": "180",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": true,
+            "raw_name": "fshin",
+            "name": "body_fshin",
+            "id": 13,
+            "parent": 11,
+            "info": {
+                "name": "fshin",
+                "pos": "-.14 0 -.24"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "fshin",
+            "name": "joint_fshin",
+            "id": 14,
+            "parent": 13,
+            "info": {
+                "axis": "0 1 0",
+                "damping": "3",
+                "name": "fshin",
+                "pos": "0 0 0",
+                "range": "-1.2 .87",
+                "stiffness": "120",
+                "type": "hinge"
+            }
+        },
+        {
+            "type": "body",
+            "is_output_node": true,
+            "raw_name": "ffoot",
+            "name": "body_ffoot",
+            "id": 15,
+            "parent": 13,
+            "info": {
+                "name": "ffoot",
+                "pos": ".13 0 -.18"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "ffoot",
+            "name": "joint_ffoot",
+            "id": 16,
+            "parent": 15,
+            "info": {
+                "axis": "0 1 0",
+                "damping": "1.5",
+                "name": "ffoot",
+                "pos": "0 0 0",
+                "range": "-.5 .5",
+                "stiffness": "60",
+                "type": "hinge"
+            }
+        }
+    ],
+    "relation_matrix": [
+        [
+            0,
+            10,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            -10,
+            0,
+            -6,
+            -6,
+            -6,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            -6,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            -6,
+            3,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6,
+            3,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -6
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0
+        ]
+    ],
+    "node_type_dict": {
+        "root": [
+            0
+        ],
+        "joint": [
+            2,
+            3,
+            4,
+            6,
+            8,
+            10,
+            12,
+            14,
+            16
+        ],
+        "body": [
+            1,
+            5,
+            7,
+            9,
+            11,
+            13,
+            15
+        ]
+    },
+    "output_type_dict": {
+        "bshin": [
+            8
+        ],
+        "fshin": [
+            14
+        ],
+        "fthigh": [
+            12
+        ],
+        "ffoot": [
+            16
+        ],
+        "bthigh": [
+            6
+        ],
+        "bfoot": [
+            10
+        ]
+    },
+    "output_list": [
+        6,
+        8,
+        10,
+        12,
+        14,
+        16
+    ],
+    "input_dict": {},
+    "debug_info": {},
+    "node_parameters": {},
+    "para_size_dict": {},
+    "num_nodes": 17
+}

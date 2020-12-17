@@ -1,0 +1,90 @@
+{
+    "tree": [
+        {
+            "type": "root",
+            "is_output_node": false,
+            "name": "root_mujocoroot",
+            "neighbour": [],
+            "id": 0,
+            "parent": 0,
+            "info": {
+                "name": "rootBody",
+                "pos": "0 0 .01"
+            },
+            "attached_joint_name": [],
+            "attached_joint_info": [],
+            "motor_names": [
+                "rootjoint"
+            ]
+        },
+        {
+            "type": "body",
+            "is_output_node": false,
+            "raw_name": "rootBody",
+            "name": "body_rootBody",
+            "id": 1,
+            "parent": 0,
+            "info": {
+                "name": "rootBody",
+                "pos": "0 0 .01"
+            }
+        },
+        {
+            "type": "joint",
+            "is_output_node": true,
+            "raw_name": "rootjoint",
+            "name": "joint_rootjoint",
+            "id": 2,
+            "parent": 1,
+            "info": {
+                "axis": "0 0 1",
+                "limited": "true",
+                "name": "rootjoint",
+                "pos": "0 0 0",
+                "range": "-3.14 3.14",
+                "type": "hinge"
+            }
+        }
+    ],
+    "relation_matrix": [
+        [
+            0,
+            10,
+            0
+        ],
+        [
+            -10,
+            0,
+            -6
+        ],
+        [
+            0,
+            6,
+            0
+        ]
+    ],
+    "node_type_dict": {
+        "root": [
+            0
+        ],
+        "joint": [
+            2
+        ],
+        "body": [
+            1
+        ]
+    },
+    "output_type_dict": {
+        "rootjoint": [
+            2
+        ]
+    },
+    "output_list": [
+        2
+    ],
+    "input_dict": {},
+    "debug_info": {},
+    "node_parameters": {},
+    "para_size_dict": {},
+    "num_nodes": 3
+}
