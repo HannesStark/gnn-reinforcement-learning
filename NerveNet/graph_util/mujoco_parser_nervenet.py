@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 import numpy as np
 from bs4 import BeautifulSoup as bs
-from graph_util.mujoco_model_settings import get_mujoco_model_settings, MULTI_TASK_DICT
+from graph_util.mujoco_parser_nervenet_settings import get_mujoco_model_settings, MULTI_TASK_DICT
 import pybullet_data
 
 logger = logging.getLogger(__name__)
