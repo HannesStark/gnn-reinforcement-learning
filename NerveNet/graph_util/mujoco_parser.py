@@ -17,7 +17,7 @@ from enum import IntEnum, Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
-from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType
+from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType, RootConnectionOption
 from graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
 from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 
@@ -73,7 +73,7 @@ def parse_mujoco_graph(task_name: str = None,
     if task_name is not None:  # task_name takes priority
         if task_name in NERVENET_XML_DICT:
             xml_name = NERVENET_XML_DICT[task_name]
-        elif task_name in NERVENET_XML_DICT:
+        elif task_name in PYBULLET_XML_DICT:
             xml_name = PYBULLET_XML_DICT[task_name]
         else:
             raise NotImplementedError(f"No task named {task_name} defined.")
@@ -135,16 +135,35 @@ def __extract_tree(xml_soup: BeautifulSoup,
                  "id": 0,
                  "parent": 0,
                  "info": robot_body_soup.attrs,
-                 "attached_joint_name": [j["name"] for j in root_joints if j["name"] not in motor_names],
+                 "attached_joint_name": ["joint_" + j["name"] for j in root_joints if j["name"] not in motor_names],
                  "attached_joint_info": [],
                  "motor_names": motor_names
                  }
+
     # TODO: Add observation size information
 
     tree = list(__unpack_node(robot_body_soup,
                               current_tree={0: root_node},
                               parent_id=0,
                               motor_names=motor_names).values())
+
+    # absorb joints that are directly attached to the root node into the root node
+    # not realy sure why we do this, but that's how the original NerveNet Implementation does it...
+    tree[0]["attached_joint_info"] = [node
+                                      for node in tree
+                                      if node["name"] in tree[0]["attached_joint_name"]]
+    tree = [node
+            for node in tree
+            if node["name"] not in tree[0]["attached_joint_name"]]
+
+    # after absorbing the root joints we need to adjust the indicies accordingly
+    index_offset = len(tree[0]["attached_joint_name"])
+    for i in range(len(tree)):
+        # apply only for indicies that came after the ones that were removed
+        if tree[i]["id"] - index_offset > 0:
+            tree[i]["id"] = tree[i]["id"] - index_offset
+        if tree[i]["parent"] - index_offset > 0:
+            tree[i]["parent"] = tree[i]["parent"] - index_offset
 
     return tree
 
@@ -209,7 +228,9 @@ def __get_motor_names(xml_soup: BeautifulSoup) -> List[str]:
     return name_list
 
 
-def __build_relation_matrix(tree: List[dict], self_loop: bool = False) -> np.ndarray:
+def __build_relation_matrix(tree: List[dict],
+                            sibbling_connections: bool = False,
+                            root_connection_option: RootConnectionOption = RootConnectionOption.NONE) -> np.ndarray:
     '''
     TODO better docstring
 
@@ -229,10 +250,32 @@ def __build_relation_matrix(tree: List[dict], self_loop: bool = False) -> np.nda
                 # direction out -> in
                 relation_matrix[node_out["id"]][node_in["id"]] = EDGE_TYPES[(
                     node_out["type"], node_in["type"])]
-
                 # direction in -> out
                 relation_matrix[node_in["id"]][node_out["id"]] = EDGE_TYPES[(
                     node_in["type"], node_out["type"])]
+
+    # always connect the root to its grand-children, but not to its children
+    # for whatever reasons... again that's just how the reference implementation works
+    root_children_ids = [node["id"]
+                         for node in tree
+                         if node["parent"] == 0
+                         and node["id"] != 0]
+    # we only care about the children of type body
+    root_grandchildren = [node
+                          for node in tree
+                          if node["parent"] in root_children_ids
+                          and node["type"] == "body"]
+    # disconnect root with children
+    for child_node_id in root_children_ids:
+        relation_matrix[child_node_id][0] = 0
+        relation_matrix[0][child_node_id] = 0
+
+    # connect root with its grand-children
+    for grandchild_node in root_grandchildren:
+        relation_matrix[grandchild_node["id"]][0] = EDGE_TYPES[(
+            grandchild_node["type"], "root")]
+        relation_matrix[0][grandchild_node["id"]] = EDGE_TYPES[(
+            "root", grandchild_node["type"])]
 
     return relation_matrix
 
