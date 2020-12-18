@@ -34,3 +34,9 @@ class ControllerType(IntEnum):
     SHARED = 0,
     SEPERATE = 1,
     UNIFIED = 2
+
+
+class RootRelationOption(IntEnum):
+    NONE = 0,
+    BODY = 1,
+    ALL = 2,

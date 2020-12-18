@@ -17,7 +17,9 @@ from enum import IntEnum, Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
-from graph_util.mujoco_parser_settings import XML_DICT, ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType
+from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType, RootRelationOption
+from graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
+from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -30,20 +32,33 @@ XML_ASSETS_DIR = Path(pybullet_data.getDataPath()) / "mjcf"
 def parse_mujoco_graph(task_name: str = None,
                        xml_name: str = None,
                        xml_assets_path: Path = None,
-                       allowed_node_types: List[str] = ALLOWED_NODE_TYPES):
+                       allowed_node_types: List[str] = ALLOWED_NODE_TYPES,
+                       use_sibling_relations: bool = True,
+                       root_relation_option: RootRelationOption = RootRelationOption.BODY):
     '''
     TODO: add documentation
 
     Parameters:
-        task_name:
+        "task_name":
             The name of the task to parse the graph structure from.
             Takes priority over xml_name.
-        xml_name:
+        "xml_name":
             The name of the xml file to parse the graph structure from.
             Either xml_name or task_name must be specified.
-        xml_assets_path:
+        "xml_assets_path":
             Specifies in which directory to look for the mujoco (mjcf) xml file.
             If none, default will be set to the pybullet data path.
+        "use_sibling_relations":
+            Whether to use sibling relations between nodes to build the relation (adjacency) matrix  
+            or to only use parent-child relationships
+        "root_relation_option":
+                Specifies which other nodes the root node should additionally be connected to:
+                    - RootRelationOption.NONE:
+                        No other nodes 
+                    - RootRelationOption.BODY:
+                        All nodes of type "body" are connected to root
+                    - RootRelationOption.ALL:
+                        All nodes are connected to root
 
     Returns:
         A dictionary containing details about the parsed graph structure:
@@ -69,7 +84,12 @@ def parse_mujoco_graph(task_name: str = None,
     '''
 
     if task_name is not None:  # task_name takes priority
-        xml_name = XML_DICT[task_name]
+        if task_name in NERVENET_XML_DICT:
+            xml_name = NERVENET_XML_DICT[task_name]
+        elif task_name in PYBULLET_XML_DICT:
+            xml_name = PYBULLET_XML_DICT[task_name]
+        else:
+            raise NotImplementedError(f"No task named {task_name} defined.")
 
     assert xml_name is not None, "Either task_name or xml_name must be given."
 
@@ -83,7 +103,9 @@ def parse_mujoco_graph(task_name: str = None,
 
     tree = __extract_tree(xml_soup)
 
-    relation_matrix = __build_relation_matrix(tree)
+    relation_matrix = __build_relation_matrix(tree,
+                                              use_sibling_relations=use_sibling_relations,
+                                              root_relation_option=root_relation_option)
 
     # group nodes by node type
     node_type_dict = {node_type: [node["id"]
@@ -128,16 +150,35 @@ def __extract_tree(xml_soup: BeautifulSoup,
                  "id": 0,
                  "parent": 0,
                  "info": robot_body_soup.attrs,
-                 "attached_joint_name": [j["name"] for j in root_joints if j["name"] not in motor_names],
+                 "attached_joint_name": ["joint_" + j["name"] for j in root_joints if j["name"] not in motor_names],
                  "attached_joint_info": [],
                  "motor_names": motor_names
                  }
+
     # TODO: Add observation size information
 
     tree = list(__unpack_node(robot_body_soup,
                               current_tree={0: root_node},
                               parent_id=0,
                               motor_names=motor_names).values())
+
+    # absorb joints that are directly attached to the root node into the root node
+    # not realy sure why we do this, but that's how the original NerveNet Implementation does it...
+    tree[0]["attached_joint_info"] = [node
+                                      for node in tree
+                                      if node["name"] in tree[0]["attached_joint_name"]]
+    tree = [node
+            for node in tree
+            if node["name"] not in tree[0]["attached_joint_name"]]
+
+    # after absorbing the root joints we need to adjust the indicies accordingly
+    index_offset = len(tree[0]["attached_joint_name"])
+    for i in range(len(tree)):
+        # apply only for indicies that came after the ones that were removed
+        if tree[i]["id"] - index_offset > 0:
+            tree[i]["id"] = tree[i]["id"] - index_offset
+        if tree[i]["parent"] - index_offset > 0:
+            tree[i]["parent"] = tree[i]["parent"] - index_offset
 
     return tree
 
@@ -202,13 +243,33 @@ def __get_motor_names(xml_soup: BeautifulSoup) -> List[str]:
     return name_list
 
 
-def __build_relation_matrix(tree: List[dict], self_loop: bool = False) -> np.ndarray:
+def __build_relation_matrix(tree: List[dict],
+                            use_sibling_relations: bool = True,
+                            root_relation_option: RootRelationOption = RootRelationOption.BODY) -> np.ndarray:
     '''
     TODO better docstring
 
     Parameters:
         "tree": 
             The dictionary representation of the parsed XML to build the relation matrix from.
+        "use_sibling_relations":
+            Whether to use sibling relations between nodes to build the relation (adjacency) matrix  
+            or to only use parent-child relationships
+        "root_relation_option":
+            The root node is an abstract node and not part of the kinematic tree described by the XML structure.
+            Therefore we need to define which nodes it is in relation/connected to.
+            At a minimum it should have the same relations as the main body (e.g. "torso") node does.
+            With this option we can additionally specify which other nodes it should also be connected to:
+                - RootRelationOption.NONE:
+                    No other nodes 
+                - RootRelationOption.BODY:
+                    All nodes of type "body" are connected to root
+                - RootRelationOption.ALL:
+                    All nodes are connected to root
+    Returns:
+        "relation_matrix": ndarray of shape (num_nodes, num_nodes)
+                A representation of the adjacency matrix for the parsed graph.
+                Non-Zero entries are edge conections of different types as defined by EDGE_TYPES
 
     '''
     num_node = len(tree)
@@ -222,10 +283,64 @@ def __build_relation_matrix(tree: List[dict], self_loop: bool = False) -> np.nda
                 # direction out -> in
                 relation_matrix[node_out["id"]][node_in["id"]] = EDGE_TYPES[(
                     node_out["type"], node_in["type"])]
-
                 # direction in -> out
                 relation_matrix[node_in["id"]][node_out["id"]] = EDGE_TYPES[(
                     node_in["type"], node_out["type"])]
+
+    # always connect the root to its grand-children, but not to its children
+    # for whatever reasons... again that's just how the reference implementation works
+    root_children_ids = [node["id"]
+                         for node in tree
+                         if node["parent"] == 0
+                         and node["id"] != 0]
+    # we only care about the children of type body
+    root_grandchildren = [node
+                          for node in tree
+                          if node["parent"] in root_children_ids
+                          and node["type"] == "body"]
+
+    # disconnect root with its children
+    for child_node_id in root_children_ids:
+        relation_matrix[child_node_id][0] = 0
+        relation_matrix[0][child_node_id] = 0
+
+    # connect root with its grand-children
+    for grandchild_node in root_grandchildren:
+        relation_matrix[grandchild_node["id"]][0] = EDGE_TYPES[(
+            grandchild_node["type"], "root")]
+        relation_matrix[0][grandchild_node["id"]] = EDGE_TYPES[(
+            "root", grandchild_node["type"])]
+
+    if use_sibling_relations:
+        sibling_pairs = [(node_1, node_2)
+                         for node_1 in tree
+                         for node_2 in tree
+                         if node_1["parent"] == node_2["parent"]
+                         and node_1["id"] != node_2["id"]
+                         and node_1["type"] != "root"
+                         and node_2["type"] != "root"]
+        for node_1, node_2 in sibling_pairs:
+            relation_matrix[node_1["id"]][node_2["id"]] = EDGE_TYPES[(
+                node_1["type"], node_2["type"])]
+            relation_matrix[node_2["id"]][node_1["id"]] = EDGE_TYPES[(
+                node_2["type"], node_1["type"])]
+
+    if root_relation_option != RootRelationOption.NONE:
+        if root_relation_option == RootRelationOption.ALL:
+            root_relation_nodes = tree
+        elif root_relation_option == RootRelationOption.BODY:
+            root_relation_nodes = [node
+                                   for node in tree
+                                   if node["type"] == "body"]
+        else:
+            raise NotImplementedError("Unknown root relation option")
+
+        for node in root_relation_nodes:
+            if node["type"] != "root":
+                relation_matrix[node["id"]][0] = EDGE_TYPES[(
+                    node["type"], "root")]
+                relation_matrix[0][node["id"]] = EDGE_TYPES[(
+                    "root", node["type"])]
 
     return relation_matrix
 

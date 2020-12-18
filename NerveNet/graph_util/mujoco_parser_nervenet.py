@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 import numpy as np
 from bs4 import BeautifulSoup as bs
-from graph_util.mujoco_model_settings import get_mujoco_model_settings, MULTI_TASK_DICT
+from graph_util.mujoco_parser_nervenet_settings import get_mujoco_model_settings, MULTI_TASK_DICT
 import pybullet_data
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,6 @@ logger.setLevel(logging.INFO)
 __all__ = ['parse_mujoco_graph']
 
 XML_ASSETS_DIR = Path(pybullet_data.getDataPath()) / "mjcf"
-print("XML_ASSETS_DIR", XML_ASSETS_DIR)
-
 
 '''
     Definition of nodes:
@@ -59,7 +57,7 @@ def parse_mujoco_graph(task_name: str = None,
                        xml_name: str = None,
                        xml_assets_path: Path = None,
                        gnn_node_option: str = 'nG,yB',
-                       root_connection_option: str = 'nN, Rn, sE',
+                       root_connection_option: str = 'yN, Rb, sE',
                        gnn_output_option: str = 'shared',
                        gnn_embedding_option: str = 'shared'):
     '''
@@ -93,6 +91,10 @@ def parse_mujoco_graph(task_name: str = None,
 
     assert xml_name is not None, "Either task_name or xml_name must be given."
 
+    if task_name is None:
+        task_name = [t_name for t_name, x_name in XML_DICT.items()
+                     if x_name == xml_name][0]
+
     if xml_assets_path is None:
         xml_assets_path = XML_ASSETS_DIR
 
@@ -125,8 +127,8 @@ def parse_mujoco_graph(task_name: str = None,
     input_dict, ob_size = _get_input_info(tree, task_name)
 
     # step 4: get the output list ready
-    tree, output_list, output_type_dict, action_size = \
-        _get_output_info(tree, xml_soup, gnn_output_option)
+    tree, output_list, output_type_dict, action_size = _get_output_info(
+        tree, xml_soup, gnn_output_option)
 
     # step 5: get the node parameters
     node_parameters, para_size_dict = _append_node_parameters(
@@ -138,14 +140,13 @@ def parse_mujoco_graph(task_name: str = None,
     # step 6: prune the body nodes
     if 'nB' in gnn_node_option:
         tree, relation_matrix, node_type_dict, \
-            input_dict, node_parameters, para_size_dict = \
-            _prune_body_nodes(tree=tree,
-                              relation_matrix=relation_matrix,
-                              node_type_dict=node_type_dict,
-                              input_dict=input_dict,
-                              node_parameters=node_parameters,
-                              para_size_dict=para_size_dict,
-                              root_connection_option=root_connection_option)
+            input_dict, node_parameters, para_size_dict = _prune_body_nodes(tree=tree,
+                                                                            relation_matrix=relation_matrix,
+                                                                            node_type_dict=node_type_dict,
+                                                                            input_dict=input_dict,
+                                                                            node_parameters=node_parameters,
+                                                                            para_size_dict=para_size_dict,
+                                                                            root_connection_option=root_connection_option)
 
     # step 7: (optional) uni edge type?
     if 'uE' in root_connection_option:
