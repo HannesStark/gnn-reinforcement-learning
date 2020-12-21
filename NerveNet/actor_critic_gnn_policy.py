@@ -4,14 +4,18 @@ from pathlib import Path
 import gym
 import numpy as np
 import torch as th
+from scipy.sparse import coo_matrix
 from stable_baselines3.common.preprocessing import get_flattened_obs_dim
 from torch import nn
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.type_aliases import Schedule
 from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor, MlpExtractor, NatureCNN, create_mlp
-from graph_util.mujoco_parser_nervenet import parse_mujoco_graph
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor, MlpExtractor, NatureCNN, \
+    create_mlp
+from torch_geometric.data import Data
+from torch_geometric.nn import GCNConv
+import torch.nn.functional as F
 
 
 class NerveNetGNN(BaseFeaturesExtractor):
@@ -28,28 +32,46 @@ class NerveNetGNN(BaseFeaturesExtractor):
     def __init__(self,
                  observation_space: gym.Space,
                  env=None,
+                 agent_structure=None,
                  task_name: str = None,
                  xml_name: str = None,
                  xml_assets_path: Path = None):
+        '''
+
+        :param observation_space:
+        :param env:
+        :param agent_structure: Dictionary of the agent defined by an XML extracted by parser_ours.py
+        :param task_name:
+        :param xml_name:
+        :param xml_assets_path:
+        '''
         super(NerveNetGNN, self).__init__(observation_space,
                                           get_flattened_obs_dim(observation_space))
         # TODO: either require number of features to be given as argument or extract them from env
         self.task_name = task_name
         self.xml_name = xml_name
         self.xml_assets_path = xml_assets_path
+        device = th.device("cuda:0" if th.cuda.is_available() else "cpu")
+        self.relation_matrix = th.tensor(agent_structure["relation_matrix"]).to_sparse().indices().to(device)
+        self.conv1 = GCNConv(1, 1, node_dim=1)
+        self.conv2 = GCNConv(1, 1, node_dim=1)
 
         if self.xml_name is None:
             if isinstance(env, gym.Wrapper):
                 env = env.env
             self.xml_name = env.robot.model_xml
-
         # graph = parse_mujoco_graph(task_name=self.task_name,
         #                            xml_name=self.xml_name,
         #                            xml_assets_path=self.xml_assets_path)
         self.flatten = nn.Flatten()
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
-        return self.flatten(observations)
+        x = observations[..., None]  # [batchsize,num_nodes, num_node_features]
+        x = self.conv1(x, self.relation_matrix)
+        x = F.relu(x)
+        x = F.dropout(x)
+        x = self.conv2(x, self.relation_matrix)
+        return self.flatten(x)
 
 
 # @Hannes: I think we should be able to use ActorCriticPolicy class without any (major) changes
@@ -99,25 +121,25 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
     """
 
     def __init__(
-        self,
-        observation_space: gym.spaces.Space,
-        action_space: gym.spaces.Space,
-        lr_schedule: Schedule,
-        net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = None,
-        activation_fn: Type[nn.Module] = nn.Tanh,
-        ortho_init: bool = True,
-        use_sde: bool = False,
-        log_std_init: float = 0.0,
-        full_std: bool = True,
-        sde_net_arch: Optional[List[int]] = None,
-        use_expln: bool = False,
-        squash_output: bool = False,
-        features_extractor_class: Type[BaseFeaturesExtractor] = NerveNetGNN,
-        # TODO: use this to pass the robot structure to the NerveNetGNN
-        features_extractor_kwargs: Optional[Dict[str, Any]] = None,
-        normalize_images: bool = True,
-        optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            self,
+            observation_space: gym.spaces.Space,
+            action_space: gym.spaces.Space,
+            lr_schedule: Schedule,
+            net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = None,
+            activation_fn: Type[nn.Module] = nn.Tanh,
+            ortho_init: bool = True,
+            use_sde: bool = False,
+            log_std_init: float = 0.0,
+            full_std: bool = True,
+            sde_net_arch: Optional[List[int]] = None,
+            use_expln: bool = False,
+            squash_output: bool = False,
+            features_extractor_class: Type[BaseFeaturesExtractor] = NerveNetGNN,
+            # TODO: use this to pass the robot structure to the NerveNetGNN
+            features_extractor_kwargs: Optional[Dict[str, Any]] = None,
+            normalize_images: bool = True,
+            optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
+            optimizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
         super(ActorCriticGNNPolicy, self).__init__(
             observation_space,
