@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 
 import gym
@@ -30,9 +31,11 @@ env = gym.make(task_name)
 with open(str(graph_logs_dir / f"{task_name}.json")) as json_file:
     task_log = json.load(json_file)
 
-checkpoint_callback = CheckpointCallback(save_freq=1000, save_path='./logs/',
+log_name = '{}_{}'.format(task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
+checkpoint_callback = CheckpointCallback(save_freq=1000, save_path='runs/' + log_name,
                                          name_prefix='rl_model')
 model = PPO(ActorCriticGNNPolicy, env, verbose=1, policy_kwargs={
-    'features_extractor_kwargs': {'env': env, 'agent_structure': task_log}})
-model.learn(total_timesteps=10000, callback=checkpoint_callback)
+    'features_extractor_kwargs': {'env': env, 'agent_structure': task_log}}, tensorboard_log="runs")
+model.learn(total_timesteps=10000, callback=checkpoint_callback,
+            tb_log_name=log_name)
 model.save("a2c_ant")
