@@ -9,10 +9,8 @@ MUJUCO_LOG.txt
 
 # Output / model files
 *.zip
-gym-results/*
-*/gym-results/*
-.gym-results/*
-*/.gym-results/*
+gym-results
+.gym-results
 
 
 # Python

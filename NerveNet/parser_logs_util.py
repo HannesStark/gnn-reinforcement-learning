@@ -32,8 +32,5 @@ def generate_graph_log(task_name: str,
 
     # make numpy array serializable
     graph['relation_matrix'] = graph['relation_matrix'].tolist()
-    for key in graph['node_parameters'].keys():
-        graph['node_parameters'][key] = graph['node_parameters'][key].tolist()
-
     with open(str(dump_dir / f"{task_name}.json"), 'w') as f:
         json.dump(graph, f, indent=4)

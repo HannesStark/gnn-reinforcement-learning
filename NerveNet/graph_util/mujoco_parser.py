@@ -11,15 +11,19 @@ import os
 import logging
 import numpy as np
 import pybullet_data
+import pybullet_envs  # register pybullet envs from bullet3
 
 from pathlib import Path
 from enum import IntEnum, Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
-from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, EDGE_TYPES, ControllerType, RootRelationOption
-from graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
+
 from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
+from graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
+from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, SUPPORTED_JOINT_TYPES,\
+    SUPPORTED_JOINT_ATTRIBUTES, SUPPORTED_BODY_ATTRIBUTES, EDGE_TYPES, SHARED_EMBEDDING_GROUPS, \
+    ControllerOption, RootRelationOption, EmbeddingOption
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -32,9 +36,11 @@ XML_ASSETS_DIR = Path(pybullet_data.getDataPath()) / "mjcf"
 def parse_mujoco_graph(task_name: str = None,
                        xml_name: str = None,
                        xml_assets_path: Path = None,
-                       allowed_node_types: List[str] = ALLOWED_NODE_TYPES,
                        use_sibling_relations: bool = True,
-                       root_relation_option: RootRelationOption = RootRelationOption.BODY):
+                       root_relation_option: RootRelationOption = RootRelationOption.NONE,
+                       controller_option: ControllerOption = ControllerOption.SHARED,
+                       embedding_option: EmbeddingOption = EmbeddingOption.SHARED,
+                       foot_list: List[str] = []):
     '''
     TODO: add documentation
 
@@ -49,12 +55,12 @@ def parse_mujoco_graph(task_name: str = None,
             Specifies in which directory to look for the mujoco (mjcf) xml file.
             If none, default will be set to the pybullet data path.
         "use_sibling_relations":
-            Whether to use sibling relations between nodes to build the relation (adjacency) matrix  
+            Whether to use sibling relations between nodes to build the relation (adjacency) matrix
             or to only use parent-child relationships
         "root_relation_option":
                 Specifies which other nodes the root node should additionally be connected to:
                     - RootRelationOption.NONE:
-                        No other nodes 
+                        No other nodes
                     - RootRelationOption.BODY:
                         All nodes of type "body" are connected to root
                     - RootRelationOption.ALL:
@@ -91,6 +97,15 @@ def parse_mujoco_graph(task_name: str = None,
         else:
             raise NotImplementedError(f"No task named {task_name} defined.")
 
+        if len(foot_list) == 0 and task_name in pybullet_envs.registry.env_specs:
+            # if we have the task_name we can try to get the foot_list from the gym environment
+            task_env = pybullet_envs.gym.make(task_name)
+            if isinstance(task_env, pybullet_envs.gym.Wrapper):
+                task_env = task_env.env
+            robot = task_env.robot
+            if hasattr(robot, "foot_list"):
+                foot_list = robot.foot_list
+
     assert xml_name is not None, "Either task_name or xml_name must be given."
 
     if xml_assets_path is None:
@@ -101,44 +116,46 @@ def parse_mujoco_graph(task_name: str = None,
     with open(str(xml_path), "r") as xml_file:
         xml_soup = BeautifulSoup(xml_file.read(), "xml")
 
-    tree = __extract_tree(xml_soup)
+    tree = __extract_tree(xml_soup, foot_list)
 
-    relation_matrix = __build_relation_matrix(tree,
-                                              use_sibling_relations=use_sibling_relations,
-                                              root_relation_option=root_relation_option)
+    relation_matrix = __build_relation_matrix(
+        tree,
+        use_sibling_relations=use_sibling_relations,
+        root_relation_option=root_relation_option)
 
     # group nodes by node type
     node_type_dict = {node_type: [node["id"]
                                   for node in tree if node["type"] == node_type]
-                      for node_type in allowed_node_types}
+                      for node_type in ALLOWED_NODE_TYPES}
 
-    output_type_dict, output_list = __get_output_mapping(tree)
+    output_type_dict, output_list = __get_output_mapping(
+        tree,
+        controller_option=controller_option)
 
-    # TODO
-    input_dict = {}
-    debug_info = {}
-    node_parameters = {}
-    para_size_dict = {}
+    obs_input_mapping, static_input_mapping, input_type_dict = __get_input_mapping(
+        tree,
+        embedding_option=embedding_option)
 
     return dict(tree=tree,
                 relation_matrix=relation_matrix,
                 node_type_dict=node_type_dict,
                 output_type_dict=output_type_dict,
                 output_list=output_list,
-                input_dict=input_dict,
-                debug_info=debug_info,
-                node_parameters=node_parameters,
-                para_size_dict=para_size_dict,
+                obs_input_mapping=obs_input_mapping,
+                static_input_mapping=static_input_mapping,
+                input_type_dict=input_type_dict,
                 num_nodes=len(tree))
 
 
 def __extract_tree(xml_soup: BeautifulSoup,
-                   allowed_node_types: List[str] = ALLOWED_NODE_TYPES):
+                   foot_list: List[str]):
     '''
     TODO: Add docstring
     '''
 
     motor_names = __get_motor_names(xml_soup)
+    default_body_soup = xml_soup.find("default").find("body")
+    default_joint_soup = xml_soup.find("default").find("joint")
     robot_body_soup = xml_soup.find("worldbody").find("body")
 
     root_joints = robot_body_soup.find_all('joint', recursive=False)
@@ -146,21 +163,26 @@ def __extract_tree(xml_soup: BeautifulSoup,
     root_node = {"type": "root",
                  "is_output_node": False,
                  "name": "root_mujocoroot",
+                 "raw_name": "root_mujocoroot",
                  "neighbour": [],
                  "id": 0,
                  "parent": 0,
                  "info": robot_body_soup.attrs,
                  "attached_joint_name": ["joint_" + j["name"] for j in root_joints if j["name"] not in motor_names],
                  "attached_joint_info": [],
-                 "motor_names": motor_names
+                 "motor_names": motor_names,
+                 "foot_list": foot_list,
+                 "default": {
+                     "body": {} if default_body_soup is None else default_body_soup.attrs,
+                     "joint": {} if default_joint_soup is None else default_joint_soup.attrs,
                  }
-
-    # TODO: Add observation size information
+                 }
 
     tree = list(__unpack_node(robot_body_soup,
                               current_tree={0: root_node},
                               parent_id=0,
-                              motor_names=motor_names).values())
+                              motor_names=motor_names,
+                              foot_list=foot_list).values())
 
     # absorb joints that are directly attached to the root node into the root node
     # not realy sure why we do this, but that's how the original NerveNet Implementation does it...
@@ -187,23 +209,21 @@ def __unpack_node(node: BeautifulSoup,
                   current_tree: dict,
                   parent_id: int,
                   motor_names: List[str],
-                  allowed_node_types: List[str] = ALLOWED_NODE_TYPES) -> dict:
+                  foot_list: List[str]) -> dict:
     '''
     This function is used to recursively unpack the xml graph structure of a given node.
 
     Parameters:
-        node: 
+        node:
             The root node from which to unpack the underlying xml tree into a dictionary.
         current_tree:
-            The dictionary represenation of the tree that has already been unpacked. 
+            The dictionary represenation of the tree that has already been unpacked.
             - Required to determin the new id to use for the current node.
             - Will be updated with the root node and its decendent nodes.
-        parent_id: 
+        parent_id:
             The id of the parent node for the current node.
-        motor_names: 
+        motor_names:
             The list of joint names that are supposed be output_nodes.
-        allowed_node_types: 
-            The list of tag names that should be extracted as decendent nodes
 
     Returns:
         A dictionary representation of the xml tree rooted at the given node
@@ -215,6 +235,7 @@ def __unpack_node(node: BeautifulSoup,
     current_tree[id] = {
         "type": node_type,
         "is_output_node": node["name"] in motor_names,
+        "is_foot": node["name"] in foot_list,
         "raw_name": node["name"],
         "name": node_type + "_" + node["name"],
         "id": id,
@@ -222,8 +243,15 @@ def __unpack_node(node: BeautifulSoup,
         "info": node.attrs
     }
 
+    if current_tree[id]["is_foot"]:
+        current_tree[id]["foot_id"] = foot_list.index(node["name"])
+
+    if current_tree[id]["type"] == "body":
+        geoms = node.find_all('geom', recursive=False)
+        current_tree[id].update({"geoms": [geom.attrs for geom in geoms]})
+
     child_soups = [child
-                   for allowed_type in allowed_node_types
+                   for allowed_type in ALLOWED_NODE_TYPES
                    for child in node.find_all(allowed_type, recursive=False)
                    ]
 
@@ -232,7 +260,8 @@ def __unpack_node(node: BeautifulSoup,
                                           current_tree=current_tree,
                                           parent_id=id,
                                           motor_names=motor_names,
-                                          allowed_node_types=allowed_node_types))
+                                          foot_list=foot_list)
+                            )
 
     return current_tree
 
@@ -244,16 +273,16 @@ def __get_motor_names(xml_soup: BeautifulSoup) -> List[str]:
 
 
 def __build_relation_matrix(tree: List[dict],
-                            use_sibling_relations: bool = True,
-                            root_relation_option: RootRelationOption = RootRelationOption.BODY) -> np.ndarray:
+                            use_sibling_relations: bool,
+                            root_relation_option: RootRelationOption) -> np.ndarray:
     '''
     TODO better docstring
 
     Parameters:
-        "tree": 
+        "tree":
             The dictionary representation of the parsed XML to build the relation matrix from.
         "use_sibling_relations":
-            Whether to use sibling relations between nodes to build the relation (adjacency) matrix  
+            Whether to use sibling relations between nodes to build the relation (adjacency) matrix
             or to only use parent-child relationships
         "root_relation_option":
             The root node is an abstract node and not part of the kinematic tree described by the XML structure.
@@ -261,7 +290,7 @@ def __build_relation_matrix(tree: List[dict],
             At a minimum it should have the same relations as the main body (e.g. "torso") node does.
             With this option we can additionally specify which other nodes it should also be connected to:
                 - RootRelationOption.NONE:
-                    No other nodes 
+                    No other nodes
                 - RootRelationOption.BODY:
                     All nodes of type "body" are connected to root
                 - RootRelationOption.ALL:
@@ -345,13 +374,13 @@ def __build_relation_matrix(tree: List[dict],
     return relation_matrix
 
 
-def __get_output_mapping(tree: List[dict], controller_type: ControllerType = ControllerType.SHARED) -> Tuple[dict, List[int]]:
+def __get_output_mapping(tree: List[dict], controller_option: ControllerOption) -> Tuple[dict, List[int]]:
     '''
     Parameters:
-        "tree": 
+        "tree":
             The dictionary representation of the parsed XML to extract the output mapping from.
-        "controller_type": 
-            Wang et al. propose different sharing settings for the controller networks that generate
+        "controller_option":
+            Wang et al. propose different sharing options for the controller networks that generate
             the action from the final hidden presentation of actuator/motor/output nodes.
                 - shared
                     The same controller network for the same/similar type of motors TODO: specify what exactly is "similiar"
@@ -361,7 +390,7 @@ def __get_output_mapping(tree: List[dict], controller_type: ControllerType = Con
                     The same controller network for all outputs
     Returns:
         "output_type_dict": dict
-            A mapping of output nodes into controll groups. 
+            A mapping of output nodes into controll groups.
             Nodes of the same controll group are supposed to share the same controller network.
             Keys: The identifier of the group
             Values: The list of nodes of this group
@@ -386,22 +415,150 @@ def __get_output_mapping(tree: List[dict], controller_type: ControllerType = Con
     joint_types = set([node_name.split("_")[0]
                        for node_name in output_nodes.keys()])
 
-    if controller_type == ControllerType.SHARED:
+    if controller_option == ControllerOption.SHARED:
         output_type_dict = {
             joint_type: [node["id"]
                          for node_name, node in output_nodes.items() if joint_type in node_name]
             for joint_type in joint_types
         }
-    elif controller_type == ControllerType.SEPERATE:
+    elif controller_option == ControllerOption.SEPERATE:
         output_type_dict = {node["raw_name"]: node["id"]
                             for node in output_nodes}
-    elif controller_type == ControllerType.UNIFIED:
+    elif controller_option == ControllerOption.UNIFIED:
         output_type_dict['unified'] = output_list
     else:
         raise NotImplementedError(
-            "Unknown controller type: %s" % controller_type)
+            "Unknown controller option: %s" % controller_option)
 
     return output_type_dict, output_list
+
+
+def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption) -> Tuple[dict, dict, dict]:
+    '''
+    Parameters:
+        "tree":
+            The dictionary representation of the parsed XML to extract the output mapping from.
+        "embedding_option":
+                - shared
+                    The same embedding function for the same/similar type of nodes TODO: specify what exactly is "similiar"
+                - seperate
+                    Different embedding functions for every output
+                - unified:
+                    The same embedding function for all outputs
+    '''
+    # mapping from node ids to parts of the observations vector
+    obs_input_mapping = {}
+    # mapping from node ids to static structural information (as defined by
+    # the kinematic tree) / fixed node features
+    static_input_mapping = {}
+    # grouping of nodes that use the same embedding function
+    input_type_dict = {}
+
+    # the joint observations we get from the environment are in the same order as the joints are defined in the kinematic tree
+    # to be able to more easily map them we enumerate them again, because except for the order we don't know anything else about
+    # the ids of the node joints
+    joints = dict(enumerate([node
+                             for node in tree
+                             if node["type"] == "joint"]))
+    # the same goes for body nodes
+    bodies = dict(enumerate([node
+                             for node in tree
+                             if node["type"] == "body"]))
+
+    # this is how many observations we have for the root node
+    # the observations for the joints follow after these
+    # TODO: varify that this can indeed be a constant
+    root_obs_size = 8
+
+    # we can immediately set the first observations to be used by the root node
+    obs_input_mapping[0] = list(range(0, root_obs_size))
+
+    for joint_key, node in joints.items():
+        # in case we'll add more complex joints later that don't have scalar observations use a list here
+        # joint position
+        position_obs = [root_obs_size + joint_key]
+        # angular velocity
+        velocity_obs = [root_obs_size + joint_key + 1]
+        obs_input_mapping[node["id"]] = position_obs + velocity_obs
+
+        # get default values for attributes and update them with node attributes
+        # overwriting the default attributes if neccessary
+        attrs = tree[0]["default"]["joint"].copy()
+        attrs.update(node["info"])
+        static_input_mapping[node["id"]] = {attr_name: __format_attr(attrs[attr_name])
+                                            for attr_name in SUPPORTED_JOINT_ATTRIBUTES
+                                            if attr_name in attrs.keys()}
+
+    # this is how many observations we have for all joint nodes combined
+    joints_obs_size = sum([len(obs_input_mapping[node["id"]])
+                           for _, node in joints.items()])
+
+    for _, node in bodies.items():
+        # for pybullet envs there are no observations generated for body nodes
+        # except the root observations
+        obs_input_mapping[node["id"]] = []
+
+        # and except for body nodes which are feets
+        if node["is_foot"]:
+            # every foot has one boolean observation to tell whether the foot is on the ground
+            obs_input_mapping[node["id"]] += [root_obs_size +
+                                              joints_obs_size + node["foot_id"]]
+
+        # get default values for attributes and update them with node attributes
+        # overwriting the default attributes if neccessary
+        attrs = tree[0]["default"]["body"].copy()
+        attrs.update(node["info"])
+        static_input_mapping[node["id"]] = {attr_name: __format_attr(attrs[attr_name])
+                                            for attr_name in SUPPORTED_JOINT_ATTRIBUTES
+                                            if attr_name in attrs.keys()}
+
+    if embedding_option == EmbeddingOption.SHARED:
+        for node_type in SHARED_EMBEDDING_GROUPS:
+            input_type_dict[node_type] = [node["id"]
+                                          for node in tree
+                                          if node_type in node["raw_name"].lower()
+                                          # make sure we don't already have this id in another group
+                                          and node["id"] not in [i for l in input_type_dict.values() for i in l]]
+
+        # drop empty groups / only keep non-empty groups
+        input_type_dict = {group_name: group_nodes
+                           for group_name, group_nodes in input_type_dict.items()
+                           if len(group_nodes) > 0}
+
+    elif embedding_option == EmbeddingOption.SEPERATE:
+        input_type_dict = {node["raw_name"]: node["id"]
+                           for node in tree}
+    elif embedding_option == EmbeddingOption.UNIFIED:
+        input_type_dict['unified'] = [node["id"] for node in tree]
+    else:
+        raise NotImplementedError(
+            "Unknown embedding option: %s" % embedding_option)
+
+    # verify that we actually assign every node here into some group
+    assert sum([len(node_list) for node_list in input_type_dict.values()]) == len(
+        tree), "Every node must be assigned to exactly one group!"
+    # also verify that we have mappings for every noed
+    assert len(obs_input_mapping) == len(
+        tree), "Every node must have an observation input mapping!"
+    assert len(static_input_mapping) == len(
+        tree) - 1, "Every node must have a static input mapping, except for the root node!"
+
+    return obs_input_mapping, static_input_mapping, input_type_dict
+
+
+def __format_attr(slist: str) -> List[float]:
+    '''
+        Attributes in xml mujoco files may contain integer, floats, booleans and arithmetic expressions.
+        This function converts these attribute strings into lists of floats
+    '''
+    # kinda hacky way to convert string to float
+    # by evaluating the sub-strings as python expressions
+
+    # Adding true and false as variables so the strings may contain lowercase true/false
+    # which will be interpreted as calls to these variables
+    true = True
+    false = False
+    return list(map(float, map(eval, slist.split(" "))))
 
 
 if __name__ == "__main__":

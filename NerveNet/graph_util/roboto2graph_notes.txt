@@ -1,5 +1,7 @@
 Documentation for which observations are returned from a given robot
 
+PyBullet:
+
 Walker:
  - root / robot body
 	- z position
@@ -17,4 +19,15 @@ Walker:
     # odd elements  [1::2] angular speed, scaled to show -1..+1
  - feet_contact 
    - for every foot 0 or 1
+	
+
+
+MuJoCo
+
+- generally provides much more information about the state of a robot
+We get:
+	Position & Orientation of the robot (5 Observations)
+	Velocity of the robot (5 Observations)
+	The position and velocity of every joint --> 2*num_joints observations
+	The external force on every "body" node (6 * num_bodies)
 	

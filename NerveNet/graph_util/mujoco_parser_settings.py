@@ -8,6 +8,27 @@ from enum import IntEnum, Enum
 
 
 ALLOWED_NODE_TYPES = ["root", "joint", "body"]
+
+# ["ball", "slide", "free"] are not supported
+# to be able to support them, we'd need to adjust the input_mapping
+# of the parser to take into account that these different types have
+# different degrees of freedom
+# TODO: We need to add support for slide in order to use the halfCheetah env
+SUPPORTED_JOINT_TYPES = ["hinge"]
+
+# fixed joint attributes that we support
+SUPPORTED_JOINT_ATTRIBUTES = ["armature",
+                              "damping",
+                              "limited",
+                              "axis",
+                              "pos",
+                              "range",
+                              "stiffness"]
+
+
+# fixed body attributes that we support
+SUPPORTED_BODY_ATTRIBUTES = ["pos"]
+
 EDGE_TYPES = {
     ("root", "root"): 0,
     ("joint", "joint"): 1,
@@ -30,7 +51,46 @@ XML_DICT = {"Walker2DBulletEnv-v0": "walker2d.xml",
             "HumanoidFlagrunHarderBulletEnv-v0": "humanoid_symmetric.xml"}
 
 
-class ControllerType(IntEnum):
+SHARED_EMBEDDING_GROUPS = ["root_mujocoroot",
+                           "aux",
+                           "cart",
+                           "pole",
+                           "torso",
+                           "pelvis",
+                           "updown",
+                           "leg",
+                           "foot",
+                           "f_",
+                           "hip",
+                           "ankle",
+                           "knee",
+                           "thigh",
+                           "arm",
+                           "elbow",
+                           "waist",
+                           "shoulder",
+                           "hand",
+                           "abdomen",
+                           "neck",
+                           "head",
+                           "tail",
+                           "shin",
+                           "pod",
+                           "rot",
+                           "mid",
+                           "back",
+                           "body",
+                           "joint",
+                           ]
+
+
+class ControllerOption(IntEnum):
+    SHARED = 0,
+    SEPERATE = 1,
+    UNIFIED = 2
+
+
+class EmbeddingOption(IntEnum):
     SHARED = 0,
     SEPERATE = 1,
     UNIFIED = 2
