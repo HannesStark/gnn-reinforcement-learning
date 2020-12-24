@@ -8,8 +8,8 @@ from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 nervenet_assets_dir = Path(os.getcwd()).parent / \
     "NerveNet" / "environments" / "assets"
 
-generate_graph_log("AntBulletEnv-v0")
-generate_graph_log("AntS-v1",
+# generate_graph_log("AntBulletEnv-v0")
+generate_graph_log("Walker2d-v1",
                    xml_assets_path=nervenet_assets_dir)
 
 for task_name in NERVENET_XML_DICT.keys():

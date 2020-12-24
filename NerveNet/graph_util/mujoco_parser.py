@@ -38,6 +38,8 @@ def parse_mujoco_graph(task_name: str = None,
                        xml_assets_path: Path = None,
                        use_sibling_relations: bool = True,
                        root_relation_option: RootRelationOption = RootRelationOption.NONE,
+                       controller_option: ControllerOption = ControllerOption.SHARED,
+                       embedding_option: EmbeddingOption = EmbeddingOption.SHARED,
                        foot_list: List[str] = []):
     '''
     TODO: add documentation
@@ -116,24 +118,23 @@ def parse_mujoco_graph(task_name: str = None,
 
     tree = __extract_tree(xml_soup, foot_list)
 
-    relation_matrix = __build_relation_matrix(tree,
-                                              use_sibling_relations=use_sibling_relations,
-                                              root_relation_option=root_relation_option)
+    relation_matrix = __build_relation_matrix(
+        tree,
+        use_sibling_relations=use_sibling_relations,
+        root_relation_option=root_relation_option)
 
     # group nodes by node type
     node_type_dict = {node_type: [node["id"]
                                   for node in tree if node["type"] == node_type]
                       for node_type in ALLOWED_NODE_TYPES}
 
-    output_type_dict, output_list = __get_output_mapping(tree)
+    output_type_dict, output_list = __get_output_mapping(
+        tree,
+        controller_option=controller_option)
 
     obs_input_mapping, static_input_mapping, input_type_dict = __get_input_mapping(
-        tree)
-
-    # TODO
-    debug_info = {}
-    node_parameters = {}
-    para_size_dict = {}
+        tree,
+        embedding_option=embedding_option)
 
     return dict(tree=tree,
                 relation_matrix=relation_matrix,
@@ -143,9 +144,6 @@ def parse_mujoco_graph(task_name: str = None,
                 obs_input_mapping=obs_input_mapping,
                 static_input_mapping=static_input_mapping,
                 input_type_dict=input_type_dict,
-                debug_info=debug_info,
-                node_parameters=node_parameters,
-                para_size_dict=para_size_dict,
                 num_nodes=len(tree))
 
 
@@ -275,8 +273,8 @@ def __get_motor_names(xml_soup: BeautifulSoup) -> List[str]:
 
 
 def __build_relation_matrix(tree: List[dict],
-                            use_sibling_relations: bool = True,
-                            root_relation_option: RootRelationOption = RootRelationOption.BODY) -> np.ndarray:
+                            use_sibling_relations: bool,
+                            root_relation_option: RootRelationOption) -> np.ndarray:
     '''
     TODO better docstring
 
@@ -376,7 +374,7 @@ def __build_relation_matrix(tree: List[dict],
     return relation_matrix
 
 
-def __get_output_mapping(tree: List[dict], controller_option: ControllerOption = ControllerOption.SHARED) -> Tuple[dict, List[int]]:
+def __get_output_mapping(tree: List[dict], controller_option: ControllerOption) -> Tuple[dict, List[int]]:
     '''
     Parameters:
         "tree":
@@ -435,7 +433,7 @@ def __get_output_mapping(tree: List[dict], controller_option: ControllerOption =
     return output_type_dict, output_list
 
 
-def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption = EmbeddingOption.SHARED) -> Tuple[dict, dict, dict]:
+def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption) -> Tuple[dict, dict, dict]:
     '''
     Parameters:
         "tree":
@@ -487,7 +485,7 @@ def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption = Em
         # overwriting the default attributes if neccessary
         attrs = tree[0]["default"]["joint"].copy()
         attrs.update(node["info"])
-        static_input_mapping[node["id"]] = {attr_name: attrs[attr_name]
+        static_input_mapping[node["id"]] = {attr_name: __format_attr(attrs[attr_name])
                                             for attr_name in SUPPORTED_JOINT_ATTRIBUTES
                                             if attr_name in attrs.keys()}
 
@@ -510,7 +508,7 @@ def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption = Em
         # overwriting the default attributes if neccessary
         attrs = tree[0]["default"]["body"].copy()
         attrs.update(node["info"])
-        static_input_mapping[node["id"]] = {attr_name: attrs[attr_name]
+        static_input_mapping[node["id"]] = {attr_name: __format_attr(attrs[attr_name])
                                             for attr_name in SUPPORTED_JOINT_ATTRIBUTES
                                             if attr_name in attrs.keys()}
 
@@ -544,7 +542,23 @@ def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption = Em
         tree), "Every node must have an observation input mapping!"
     assert len(static_input_mapping) == len(
         tree) - 1, "Every node must have a static input mapping, except for the root node!"
+
     return obs_input_mapping, static_input_mapping, input_type_dict
+
+
+def __format_attr(slist: str) -> List[float]:
+    '''
+        Attributes in xml mujoco files may contain integer, floats, booleans and arithmetic expressions.
+        This function converts these attribute strings into lists of floats
+    '''
+    # kinda hacky way to convert string to float
+    # by evaluating the sub-strings as python expressions
+
+    # Adding true and false as variables so the strings may contain lowercase true/false
+    # which will be interpreted as calls to these variables
+    true = True
+    false = False
+    return list(map(float, map(eval, slist.split(" "))))
 
 
 if __name__ == "__main__":
