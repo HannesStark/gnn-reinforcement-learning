@@ -51,7 +51,7 @@ XML_DICT = {"Walker2DBulletEnv-v0": "walker2d.xml",
             "HumanoidFlagrunHarderBulletEnv-v0": "humanoid_symmetric.xml"}
 
 
-SHARED_EMBEDDING_GROUPS = ["root",
+SHARED_EMBEDDING_GROUPS = ["root_mujocoroot",
                            "aux",
                            "cart",
                            "pole",
@@ -60,6 +60,7 @@ SHARED_EMBEDDING_GROUPS = ["root",
                            "updown",
                            "leg",
                            "foot",
+                           "f_",
                            "hip",
                            "ankle",
                            "knee",
@@ -70,12 +71,16 @@ SHARED_EMBEDDING_GROUPS = ["root",
                            "shoulder",
                            "hand",
                            "abdomen",
+                           "neck",
+                           "head",
                            "tail",
                            "shin",
                            "pod",
+                           "rot",
                            "mid",
                            "back",
-                           "f_"
+                           "body",
+                           "joint",
                            ]
 
 

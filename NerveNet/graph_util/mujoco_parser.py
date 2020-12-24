@@ -516,7 +516,6 @@ def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption = Em
 
     if embedding_option == EmbeddingOption.SHARED:
         for node_type in SHARED_EMBEDDING_GROUPS:
-            used_ids = [i for l in input_type_dict.values() for i in l]
             input_type_dict[node_type] = [node["id"]
                                           for node in tree
                                           if node_type in node["raw_name"].lower()
