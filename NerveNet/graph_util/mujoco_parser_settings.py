@@ -1,10 +1,9 @@
 """
-    
     @author:
         Tobias Schmidt, Hannes Stark
 """
 
-from enum import IntEnum, Enum
+from enum import IntEnum
 
 
 ALLOWED_NODE_TYPES = ["root", "joint", "body"]
@@ -76,11 +75,14 @@ SHARED_EMBEDDING_GROUPS = ["root_mujocoroot",
                            "tail",
                            "shin",
                            "pod",
+                           "slider",
                            "rot",
                            "mid",
                            "back",
                            "body",
                            "joint",
+                           "root",  # for joints named rootx, rooty and so on
+                           "ignore"
                            ]
 
 
