@@ -7,20 +7,23 @@ from torch import nn
 from stable_baselines3 import PPO
 from stable_baselines3.common.type_aliases import Schedule
 from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
 from models.nerve_net_gnn import NerveNetGNN
 
-# @Hannes: I think we should be able to use ActorCriticPolicy class without any (major) changes
-# we might just get away with just initialising the class with our own features_extractor_class
-# as defined above.
-# The only issue I currently see with that approach is, that I'm not a 100% sure about the
-# calculation of the controler outputs. The NerveNet paper proposed to use a different MLPs for
-# each type of controler node (hips, feet, knees, etc.) to calculate the mean of the policy
-# distribution. However, they to say that in practice they found that one unified controller
-# doesn't hurt the performance, so we might be able to get away with that.
 #
-
-# TODO: Next step: decide which data structure we should use to pass the robot structure to NerveNetGNN
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
 
 
 class ActorCriticGNNPolicy(ActorCriticPolicy):
@@ -62,7 +65,7 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
             observation_space: gym.spaces.Space,
             action_space: gym.spaces.Space,
             lr_schedule: Schedule,
-            net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = None,
+            net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = [16, 16, dict(pi=[64, 64], vf=[64, 64])],
             activation_fn: Type[nn.Module] = nn.Tanh,
             ortho_init: bool = True,
             use_sde: bool = False,
@@ -71,13 +74,18 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
             sde_net_arch: Optional[List[int]] = None,
             use_expln: bool = False,
             squash_output: bool = False,
-            features_extractor_class: Type[BaseFeaturesExtractor] = NerveNetGNN,
-            # TODO: use this to pass the robot structure to the NerveNetGNN
+            features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
             features_extractor_kwargs: Optional[Dict[str, Any]] = None,
+            # use these to pass arguments to the NerveNetGNN
+            mlp_extractor_class: Type[nn.Module] = NerveNetGNN,
+            mlp_extractor_kwargs: Optional[Dict[str, Any]] = None,
             normalize_images: bool = True,
             optimizer_class: Type[torch.optim.Optimizer] = torch.optim.Adam,
             optimizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
+
+        self.mlp_extractor_class = mlp_extractor_class
+        self.mlp_extractor_kwargs = mlp_extractor_kwargs
         super(ActorCriticGNNPolicy, self).__init__(
             observation_space,
             action_space,
@@ -96,6 +104,14 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
             normalize_images=normalize_images,
             optimizer_class=optimizer_class,
             optimizer_kwargs=optimizer_kwargs,
+        )
+
+    def _build_mlp_extractor(self) -> None:
+        """
+        Create the policy and value networks.
+        """
+        self.mlp_extractor = self.mlp_extractor_class(
+            self.features_dim, net_arch=self.net_arch, activation_fn=self.activation_fn, device=self.device, **self.mlp_extractor_kwargs
         )
 
     def _get_latent(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:

@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 import gym
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, A2C
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.policies import ActorCriticPolicy
 import pybullet_envs  # register pybullet envs from bullet3
@@ -34,11 +34,11 @@ env = gym.make(task_name)
 log_name = '{}_{}'.format(task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
 checkpoint_callback = CheckpointCallback(save_freq=1000, save_path='runs/' + log_name,
                                          name_prefix='rl_model')
-model = PPO(ActorCriticGNNPolicy,
+model = A2C(ActorCriticGNNPolicy,
             env,
             verbose=1,
             policy_kwargs={
-                'features_extractor_kwargs': {
+                'mlp_extractor_kwargs': {
                     'task_name': task_name,
                     'xml_assets_path': None
                 }

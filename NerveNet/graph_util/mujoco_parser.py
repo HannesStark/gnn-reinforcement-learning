@@ -132,6 +132,11 @@ def parse_mujoco_graph(task_name: str = None,
         tree,
         embedding_option=embedding_option)
 
+    num_nodes = len(obs_input_mapping)
+    num_node_features = max([len(lst1) + len(lst1)
+                             for lst1 in obs_input_mapping.values()
+                             for lst2 in static_input_mapping.values()])
+
     return dict(tree=tree,
                 relation_matrix=relation_matrix,
                 node_type_dict=node_type_dict,
@@ -140,7 +145,8 @@ def parse_mujoco_graph(task_name: str = None,
                 obs_input_mapping=obs_input_mapping,
                 static_input_mapping=static_input_mapping,
                 input_type_dict=input_type_dict,
-                num_nodes=len(tree))
+                num_nodes=num_nodes,
+                num_node_features=num_node_features)
 
 
 def __extract_tree(xml_soup: BeautifulSoup,
