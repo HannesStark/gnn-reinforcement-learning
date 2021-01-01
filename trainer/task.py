@@ -35,13 +35,13 @@ def get_args():
     args_parser.add_argument(
         '--alg',
         help='The algorithm to be used for training',
-        choices=["A2C", "PPO"]
+        choices=["A2C", "PPO"],
         required=True)
 
     args_parser.add_argument(
         '--policy',
         help='The type of model to use.',
-        choices=["GnnPolicy", "MlpPolicy"]
+        choices=["GnnPolicy", "MlpPolicy"],
         required=True)
 
     args_parser.add_argument(
@@ -54,7 +54,7 @@ def get_args():
     args_parser.add_argument(
         '--tensorboard-log',
         help='the log location for tensorboard (if None, no logging)',
-        type=pathlib.Path
+        type=pathlib.Path,
         default="log")
 
     # Algorithm (PPO/A2C) arguments
@@ -65,13 +65,13 @@ def get_args():
 
     args_parser.add_argument(
         '--n-epochs',
-        help="For PPO: Number of epochs when optimizing the surrogate loss."
+        help="For PPO: Number of epochs when optimizing the surrogate loss.",
         type=int,
     )
     args_parser.add_argument(
         '--seed',
         help='Random seed (default: 42)',
-        type=int
+        type=int,
     )
     args_parser.add_argument(
         '--device',
@@ -88,13 +88,12 @@ def get_args():
     args_parser.add_argument(
         '--activation-fn',
         help='Activation function of the policy and value networks',
-        choices=["Tanh", "ReLU"],
-        default="ReLU")
+        choices=["Tanh", "ReLU"])
 
     # Estimator arguments
     args_parser.add_argument(
         '--learning-rate',
-        help='Learning rate value for the optimizers.'
+        help='Learning rate value for the optimizers.',
         type=float)
 
     # Saved model arguments

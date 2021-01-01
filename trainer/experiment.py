@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+from datetime import datetime
+
 import torch
 from torch import nn
 
@@ -35,50 +38,56 @@ def run(args):
     Args:
     args: experiment parameters.
     """
+    # args to dictionary
+    args = vars(args)
+
     cuda_availability = torch.cuda.is_available()
-    device = args.device
+    device = args["device"]
+    task_name = args["task_name"]
     print('\n*************************')
     print('`CUDA` available: {}'.format(cuda_availability))
     print('Device specified: {}'.format(device))
     print('*************************\n')
 
     # Create the environment
-    env = gym.make(args.task_name)
+    env = gym.make(task_name)
 
     # Prepare tensorboard logging
     log_name = '{}_{}'.format(
         task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
     checkpoint_callback = CheckpointCallback(save_freq=1000,
-                                             save_path=args.tensorboard_log + log_name,
+                                             save_path=args["tensorboard_log"] /
+                                             log_name,
                                              name_prefix='rl_model')
     # Create the model
-    alg_class = algorithms[args.alg]
+    alg_class = algorithms[args["alg"]]
     alg_kwargs = dict()
-    update_not_none(alg_kwargs, args, "n_steps")
+    update_not_none(alg_kwargs, args, "n_step")
     update_not_none(alg_kwargs, args, "n_epochs")
     update_not_none(alg_kwargs, args, "seed")
 
     policy_kwargs = dict()
     update_not_none(alg_kwargs, args, "net_arch")
-    policy_kwargs["activation_fn"] = activation_functions[args.activation_fn]
-    if args.policy == "GnnPolicy":
-        policy_kwargs["mlp_extractor_kwargs"] = {"task_name": args.task_name}
+    if "activation_fn" in args.keys():
+        policy_kwargs["activation_fn"] = activation_functions[args["activation_fn"]]
+    if args["policy"] == "GnnPolicy":
+        policy_kwargs["mlp_extractor_kwargs"] = {
+            "task_name": task_name}
 
-    model = alg_class(args.policy,
+    model = alg_class(args["policy"],
                       env,
                       verbose=1,
                       policy_kwargs=policy_kwargs,
                       device=device,
-                      tensorboard_log=args.tensorboard_log,
+                      tensorboard_log=args["tensorboard_log"],
                       **alg_kwargs)
 
     # Train / Test the model
-    model.learn(total_timesteps=args.total_timesteps,
+    model.learn(total_timesteps=args["total_timesteps"],
                 callback=checkpoint_callback,
                 tb_log_name=log_name)
 
-    model.save(args.model_name)
-
+    model.save(args["model_name"])
     # TODO Upload the model to GCS
 
 

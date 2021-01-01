@@ -89,7 +89,6 @@ RUN pip3 install pybullet --upgrade --user
 RUN pip3 install -e git+https://github.com/DLR-RM/stable-baselines3#egg=stable-baselines3
 
 
-WORKDIR /root/tum-adlr-ws21-04
 
 # Set up the entry point to invoke the trainer.
 ENTRYPOINT ["python3", "-u", "trainer/task.py"]
