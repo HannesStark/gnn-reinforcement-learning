@@ -1,8 +1,5 @@
-pybullet
 gym
 num2words
 beautifulsoup4
 networkx
 lxml
-#torch >= 1.4.0
-#stable-baselines3[extra]
