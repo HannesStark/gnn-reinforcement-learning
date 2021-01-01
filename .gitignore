@@ -1,11 +1,12 @@
 # Log files
+.log
+log
 logs
 graph_logs
 graph_logs_new
 logs_parser
 logs_parser_nervenet
 MUJUCO_LOG.txt
-.log
 
 # Output / model files
 *.zip

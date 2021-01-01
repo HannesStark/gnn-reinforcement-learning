@@ -9,7 +9,7 @@ from stable_baselines3.common.type_aliases import Schedule
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
 from stable_baselines3.common.utils import get_device
-from models.nerve_net_gnn import NerveNetGNN
+from NerveNet.models.nerve_net_gnn import NerveNetGNN
 
 
 class ActorCriticGnnPolicy(ActorCriticPolicy):
@@ -73,7 +73,7 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
 
         self.mlp_extractor_class = mlp_extractor_class
         self.mlp_extractor_kwargs = mlp_extractor_kwargs
-        super(ActorCriticGNNPolicy, self).__init__(
+        super(ActorCriticGnnPolicy, self).__init__(
             observation_space,
             action_space,
             lr_schedule,

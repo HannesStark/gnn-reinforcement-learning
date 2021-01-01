@@ -16,27 +16,31 @@
 FROM nvidia/cuda:11.1-cudnn8-runtime
 
 # Installs necessary dependencies.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get -y update \
+    && apt-get install -y software-properties-common \
+    && apt-get -y update \
+    && add-apt-repository universe
+RUN apt-get -y update
+
+RUN apt-get install -y --no-install-recommends \
     wget \
     curl \
     git \
-    python-dev && \
+    python3 \
+    python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
-# Installs pip.
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-    python get-pip.py && \
-    pip install setuptools && \
-    rm get-pip.py
+RUN  python3 --version
+RUN  pip3 --version
 
 WORKDIR /root
 
 # Installs cloudml-hypertune for hyperparameter tuning.
 # It’s not needed if you don’t want to do hyperparameter tuning.
-RUN pip install cloudml-hypertune
+RUN pip3 install cloudml-hypertune
 
 # Installs pandas, and google-cloud-storage.
-RUN pip install pandas google-cloud-storage
+RUN pip3 install pandas google-cloud-storage
 
 # Installs google cloud sdk, this is mostly for using gsutil to export model.
 RUN wget -nv \
@@ -58,29 +62,33 @@ ENV PATH $PATH:/root/tools/google-cloud-sdk/bin
 RUN echo '[GoogleCompute]\nservice_account = default' > /etc/boto.cfg
 
 
-# Get the tum-adlr-ws21-04 repo
-RUN git clone https://github.com/HannesStark/tum-adlr-ws21-04.git
+# Get the tum-adlr-ws21-04 source code
+# Option 1: clone the repo
+#RUN git clone https://github.com/HannesStark/tum-adlr-ws21-04.git
+
+# Option 2: copy the source code from local machine to the container
+# this assumes you call docker build from the root of the tum-adlr-ws21-04 repo
+COPY . .
 
 
 # install dependencies for ADLR
-RUN pip install -e tum-adlr-ws21-04
+RUN pip3 install -e .
 
 # Installs pytorch and its libraries.
-RUN pip install torch===1.7.1 torchvision===0.8.2 torchaudio===0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
-RUN pip install torch-scatter -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
-RUN pip install torch-sparse -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
-RUN pip install torch-cluster -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
-RUN pip install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
-RUN pip install torch-geometric
+RUN pip3 install torch===1.7.1 torchvision===0.8.2 torchaudio===0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip3 install torch-scatter -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
+RUN pip3 install torch-sparse -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
+RUN pip3 install torch-cluster -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
+RUN pip3 install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
+RUN pip3 install torch-geometric
 
 # Install pybullet
-RUN pip install pybullet --upgrade --user
+RUN pip3 install pybullet --upgrade --user
 
 # install stable_baselines3
-RUN pip install -e git+https://github.com/DLR-RM/stable-baselines3#egg=stable-baselines3[docs,tests,extra]
+RUN pip3 install -e git+https://github.com/DLR-RM/stable-baselines3#egg=stable-baselines3
 
 
-WORKDIR /root/tum-adlr-ws21-04
 
 # Set up the entry point to invoke the trainer.
-ENTRYPOINT ["python", "-u", "trainer/task.py"]
+ENTRYPOINT ["python3", "-u", "trainer/task.py"]
