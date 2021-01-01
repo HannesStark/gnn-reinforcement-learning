@@ -16,9 +16,9 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
 
-from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
-from graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
-from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, SUPPORTED_JOINT_TYPES,\
+from NerveNet.graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
+from NerveNet.graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
+from NerveNet.graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, SUPPORTED_JOINT_TYPES,\
     SUPPORTED_JOINT_ATTRIBUTES, SUPPORTED_BODY_ATTRIBUTES, EDGE_TYPES, SHARED_EMBEDDING_GROUPS, \
     ControllerOption, RootRelationOption, EmbeddingOption
 

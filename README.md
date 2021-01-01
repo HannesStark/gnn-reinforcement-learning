@@ -54,7 +54,11 @@ git clone https://github.com/DLR-RM/stable-baselines3 && cd stable-baselines3
 pip install -e .[docs,tests,extra]
 ```
 
-5. Install the other requirements using the `requirements.txt`:
+
+5. Install our NerveNet implementation with the rest of the dependencies. Change the directory to the repositories root folder and run:
 ```
-pip install -r requirements.txt
+pip install -e .
 ```
+
+## Docker
+https://github.com/GoogleCloudPlatform/ai-platform-samples/tree/master/training/pytorch/structured/custom_containers/gpu

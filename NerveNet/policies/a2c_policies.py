@@ -12,7 +12,7 @@ from stable_baselines3.common.utils import get_device
 from models.nerve_net_gnn import NerveNetGNN
 
 
-class ActorCriticGNNPolicy(ActorCriticPolicy):
+class ActorCriticGnnPolicy(ActorCriticPolicy):
     """
     GNN policy class for actor-critic algorithms (has both policy and value prediction).
     Used by A2C, PPO and the likes.

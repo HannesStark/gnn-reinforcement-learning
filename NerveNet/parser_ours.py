@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
-from parser_logs_util import generate_graph_log
-from graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
-from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
+from NerveNet.parser_logs_util import generate_graph_log
+from NerveNet.graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
+from NerveNet.graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 
 
 nervenet_assets_dir = Path(os.getcwd()).parent / \
