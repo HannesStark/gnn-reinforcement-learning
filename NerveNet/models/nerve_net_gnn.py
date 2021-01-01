@@ -11,8 +11,8 @@ from torch_geometric.nn import GCNConv, MessagePassing
 
 
 from stable_baselines3.common.utils import get_device
-from graph_util.mujoco_parser import parse_mujoco_graph
-from graph_util.observation_mapper import observations_to_node_attributes, relation_matrix_to_adjacency_matrix
+from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
+from NerveNet.graph_util.observation_mapper import observations_to_node_attributes, relation_matrix_to_adjacency_matrix
 
 
 class NerveNetGNN(nn.Module):
