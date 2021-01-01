@@ -36,6 +36,8 @@ checkpoint_callback = CheckpointCallback(save_freq=1000, save_path='runs/' + log
                                          name_prefix='rl_model')
 model = A2C(ActorCriticGNNPolicy,
             env,
+            # reducing batch_size to 1
+            # n_steps=1,
             verbose=1,
             policy_kwargs={
                 'mlp_extractor_kwargs': {

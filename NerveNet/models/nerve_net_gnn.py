@@ -126,6 +126,7 @@ class NerveNetGNN(nn.Module):
         # Create networks
         # If the list of layers is empty, the network will just act as an Identity module
         self.shared_net = shared_net
+        self.flatten = nn.Flatten()
         self.policy_net = nn.Sequential(*policy_net).to(self.device)
         self.value_net = nn.Sequential(*value_net).to(self.device)
 
@@ -141,13 +142,15 @@ class NerveNetGNN(nn.Module):
                                                         self.info["num_nodes"],
                                                         self.info["num_node_features"]
                                                         )
+
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
                 shared_latent = layer(shared_latent, self.edge_index)
             else:
                 shared_latent = layer(shared_latent)
 
-        shared_latent = shared_latent.flatten()[None, :]
+        shared_latent = self.flatten(shared_latent)
+        shape = shared_latent.shape
         latent_pi, latent_vf = self.policy_net(
             shared_latent), self.value_net(shared_latent)
         return latent_pi, latent_vf
