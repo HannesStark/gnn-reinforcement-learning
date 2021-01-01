@@ -40,6 +40,7 @@ class NerveNetGNN(nn.Module):
         self.task_name = task_name
         self.xml_name = xml_name
         self.xml_assets_path = xml_assets_path
+        self.device = get_device(device)
 
         self.info = parse_mujoco_graph(task_name=self.task_name,
                                        xml_name=self.xml_name,
@@ -59,8 +60,9 @@ class NerveNetGNN(nn.Module):
             one_hot_attributes=True,
             self_loop=True
         )
+        self.edge_index = self.edge_index.to(self.device)
+        self.edge_attr = self.edge_attr.to(self.device)
 
-        self.device = get_device(device)
         shared_net, policy_net, value_net = [], [], []
         # Layer sizes of the network that only belongs to the policy network
         policy_only_layers = []
@@ -79,7 +81,7 @@ class NerveNetGNN(nn.Module):
                 shared_net.append(GCNConv(last_layer_dim_shared,
                                           layer_size,
                                           # we already added self_loops ourselves
-                                          add_self_loops=False))
+                                          add_self_loops=False).to(self.device))
 
                 shared_net.append(activation_fn())
                 last_layer_dim_shared = layer_size

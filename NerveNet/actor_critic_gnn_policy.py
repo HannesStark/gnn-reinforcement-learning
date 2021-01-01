@@ -8,22 +8,8 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.type_aliases import Schedule
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
+from stable_baselines3.common.utils import get_device
 from models.nerve_net_gnn import NerveNetGNN
-
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
 
 
 class ActorCriticGNNPolicy(ActorCriticPolicy):
@@ -65,7 +51,8 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
             observation_space: gym.spaces.Space,
             action_space: gym.spaces.Space,
             lr_schedule: Schedule,
-            net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = [16, 16, dict(pi=[64, 64], vf=[64, 64])],
+            net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = [
+                16, 16, dict(pi=[64, 64], vf=[64, 64])],
             activation_fn: Type[nn.Module] = nn.Tanh,
             ortho_init: bool = True,
             use_sde: bool = False,
@@ -105,6 +92,20 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
             optimizer_class=optimizer_class,
             optimizer_kwargs=optimizer_kwargs,
         )
+
+    @property
+    def device(self) -> torch.device:
+        """Infer which device this policy lives on by inspecting its parameters.
+        If it has no parameters, the 'auto' device is used as a fallback.
+
+        Note: The BasePolicy class for some reason returns cpu and not auto as fallback.
+        However, when we use the FlattenExtractor as FeatureExtractor Network there won't have
+        been any parameters defined from which we could infere the correct device, always leading to the fallback.
+        Which means, we wouldn't be able to use the GPU if we also use FlattenExtractor
+        :return:"""
+        for param in self.parameters():
+            return param.device
+        return get_device("auto")
 
     def _build_mlp_extractor(self) -> None:
         """
