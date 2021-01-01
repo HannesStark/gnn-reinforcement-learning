@@ -1,10 +1,9 @@
 """
-    
     @author:
         Tobias Schmidt, Hannes Stark
 """
 
-from enum import IntEnum, Enum
+from enum import IntEnum
 
 
 ALLOWED_NODE_TYPES = ["root", "joint", "body"]
@@ -30,15 +29,15 @@ SUPPORTED_JOINT_ATTRIBUTES = ["armature",
 SUPPORTED_BODY_ATTRIBUTES = ["pos"]
 
 EDGE_TYPES = {
-    ("root", "root"): 0,
-    ("joint", "joint"): 1,
-    ("joint", "body"): 6,
-    ("body", "joint"): -6,
-    ("root", "joint"): 9,
-    ("joint", "root"): -9,
-    ("root", "body"): 10,
-    ("body", "root"): -10,
-    ("body", "body"): 3
+    ("root", "root"): 1,  # and for self loops
+    ("joint", "joint"): 2,
+    ("joint", "body"): 3,
+    ("body", "joint"): -3,
+    ("root", "joint"): 4,
+    ("joint", "root"): -4,
+    ("root", "body"): 5,
+    ("body", "root"): -5,
+    ("body", "body"): 6
 }
 
 
@@ -76,11 +75,14 @@ SHARED_EMBEDDING_GROUPS = ["root_mujocoroot",
                            "tail",
                            "shin",
                            "pod",
+                           "slider",
                            "rot",
                            "mid",
                            "back",
                            "body",
                            "joint",
+                           "root",  # for joints named rootx, rooty and so on
+                           "ignore"
                            ]
 
 

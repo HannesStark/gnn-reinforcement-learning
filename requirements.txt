@@ -2,3 +2,4 @@ gym
 num2words
 beautifulsoup4
 networkx
+lxml

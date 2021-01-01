@@ -6,9 +6,6 @@
         Tobias Schmidt, Hannes Stark, modified from the code of Tingwu Wang.
 """
 
-
-import os
-import logging
 import numpy as np
 import pybullet_data
 import pybullet_envs  # register pybullet envs from bullet3
@@ -25,8 +22,6 @@ from graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, SUPPORTED_JOIN
     SUPPORTED_JOINT_ATTRIBUTES, SUPPORTED_BODY_ATTRIBUTES, EDGE_TYPES, SHARED_EMBEDDING_GROUPS, \
     ControllerOption, RootRelationOption, EmbeddingOption
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 __all__ = ["parse_mujoco_graph"]
 
@@ -40,7 +35,8 @@ def parse_mujoco_graph(task_name: str = None,
                        root_relation_option: RootRelationOption = RootRelationOption.NONE,
                        controller_option: ControllerOption = ControllerOption.SHARED,
                        embedding_option: EmbeddingOption = EmbeddingOption.SHARED,
-                       foot_list: List[str] = []):
+                       foot_list: List[str] = [],
+                       absorb_root_joints: bool = False):
     '''
     TODO: add documentation
 
@@ -116,7 +112,7 @@ def parse_mujoco_graph(task_name: str = None,
     with open(str(xml_path), "r") as xml_file:
         xml_soup = BeautifulSoup(xml_file.read(), "xml")
 
-    tree = __extract_tree(xml_soup, foot_list)
+    tree = __extract_tree(xml_soup, foot_list, absorb_root_joints)
 
     relation_matrix = __build_relation_matrix(
         tree,
@@ -136,6 +132,11 @@ def parse_mujoco_graph(task_name: str = None,
         tree,
         embedding_option=embedding_option)
 
+    num_nodes = len(obs_input_mapping)
+    num_node_features = max([len(lst1) + len(lst1)
+                             for lst1 in obs_input_mapping.values()
+                             for lst2 in static_input_mapping.values()])
+
     return dict(tree=tree,
                 relation_matrix=relation_matrix,
                 node_type_dict=node_type_dict,
@@ -144,11 +145,13 @@ def parse_mujoco_graph(task_name: str = None,
                 obs_input_mapping=obs_input_mapping,
                 static_input_mapping=static_input_mapping,
                 input_type_dict=input_type_dict,
-                num_nodes=len(tree))
+                num_nodes=num_nodes,
+                num_node_features=num_node_features)
 
 
 def __extract_tree(xml_soup: BeautifulSoup,
-                   foot_list: List[str]):
+                   foot_list: List[str],
+                   absorb_root_joints: bool):
     '''
     TODO: Add docstring
     '''
@@ -184,23 +187,24 @@ def __extract_tree(xml_soup: BeautifulSoup,
                               motor_names=motor_names,
                               foot_list=foot_list).values())
 
-    # absorb joints that are directly attached to the root node into the root node
-    # not realy sure why we do this, but that's how the original NerveNet Implementation does it...
-    tree[0]["attached_joint_info"] = [node
-                                      for node in tree
-                                      if node["name"] in tree[0]["attached_joint_name"]]
-    tree = [node
-            for node in tree
-            if node["name"] not in tree[0]["attached_joint_name"]]
+    if absorb_root_joints:
+        # absorb joints that are directly attached to the root node into the root node
+        # not realy sure why we do this, but that's how the original NerveNet Implementation does it...
+        tree[0]["attached_joint_info"] = [node
+                                          for node in tree
+                                          if node["name"] in tree[0]["attached_joint_name"]]
+        tree = [node
+                for node in tree
+                if node["name"] not in tree[0]["attached_joint_name"]]
 
-    # after absorbing the root joints we need to adjust the indicies accordingly
-    index_offset = len(tree[0]["attached_joint_name"])
-    for i in range(len(tree)):
-        # apply only for indicies that came after the ones that were removed
-        if tree[i]["id"] - index_offset > 0:
-            tree[i]["id"] = tree[i]["id"] - index_offset
-        if tree[i]["parent"] - index_offset > 0:
-            tree[i]["parent"] = tree[i]["parent"] - index_offset
+        # after absorbing the root joints we need to adjust the indicies accordingly
+        index_offset = len(tree[0]["attached_joint_name"])
+        for i in range(len(tree)):
+            # apply only for indicies that came after the ones that were removed
+            if tree[i]["id"] - index_offset > 0:
+                tree[i]["id"] = tree[i]["id"] - index_offset
+            if tree[i]["parent"] - index_offset > 0:
+                tree[i]["parent"] = tree[i]["parent"] - index_offset
 
     return tree
 
@@ -468,17 +472,19 @@ def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption) -> 
     # this is how many observations we have for the root node
     # the observations for the joints follow after these
     # TODO: varify that this can indeed be a constant
-    root_obs_size = 8
-
+    _root_obs_size = 8
+    _num_obs_per_joint = 2
     # we can immediately set the first observations to be used by the root node
-    obs_input_mapping[0] = list(range(0, root_obs_size))
+    obs_input_mapping[0] = list(range(0, _root_obs_size))
 
     for joint_key, node in joints.items():
+        # the id of the observations vector where the observations for this joint start from
+        obs_idx_offset = _root_obs_size + joint_key * _num_obs_per_joint
         # in case we'll add more complex joints later that don't have scalar observations use a list here
         # joint position
-        position_obs = [root_obs_size + joint_key]
+        position_obs = [obs_idx_offset]
         # angular velocity
-        velocity_obs = [root_obs_size + joint_key + 1]
+        velocity_obs = [obs_idx_offset + 1]
         obs_input_mapping[node["id"]] = position_obs + velocity_obs
 
         # get default values for attributes and update them with node attributes
@@ -501,7 +507,7 @@ def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption) -> 
         # and except for body nodes which are feets
         if node["is_foot"]:
             # every foot has one boolean observation to tell whether the foot is on the ground
-            obs_input_mapping[node["id"]] += [root_obs_size +
+            obs_input_mapping[node["id"]] += [_root_obs_size +
                                               joints_obs_size + node["foot_id"]]
 
         # get default values for attributes and update them with node attributes
@@ -541,7 +547,7 @@ def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption) -> 
     assert len(obs_input_mapping) == len(
         tree), "Every node must have an observation input mapping!"
     assert len(static_input_mapping) == len(
-        tree) - 1, "Every node must have a static input mapping, except for the root node!"
+        tree) - 1, "Every node must have a static input mapping, except the root node!"
 
     return obs_input_mapping, static_input_mapping, input_type_dict
 

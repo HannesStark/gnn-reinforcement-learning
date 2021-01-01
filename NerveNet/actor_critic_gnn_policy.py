@@ -1,90 +1,16 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-from pathlib import Path
 import gym
-import numpy as np
-import torch as th
-from scipy.sparse import coo_matrix
-from stable_baselines3.common.preprocessing import get_flattened_obs_dim
+import torch
 from torch import nn
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.type_aliases import Schedule
 from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor, MlpExtractor, NatureCNN, \
-    create_mlp
-from torch_geometric.data import Data
-from torch_geometric.nn import GCNConv
-import torch.nn.functional as F
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
+from stable_baselines3.common.utils import get_device
+from models.nerve_net_gnn import NerveNetGNN
 
-
-class NerveNetGNN(BaseFeaturesExtractor):
-    """
-    GNN from NerveNet paper:
-        Wang, et al.
-        "Nervenet: Learning structured policy with graph neural networks"
-        6th International Conference on Learning Representations, ICLR 2018
-
-    :param observation_space:
-    :param env: 
-    """
-
-    def __init__(self,
-                 observation_space: gym.Space,
-                 env=None,
-                 agent_structure=None,
-                 task_name: str = None,
-                 xml_name: str = None,
-                 xml_assets_path: Path = None):
-        '''
-
-        :param observation_space:
-        :param env:
-        :param agent_structure: Dictionary of the agent defined by an XML extracted by parser_ours.py
-        :param task_name:
-        :param xml_name:
-        :param xml_assets_path:
-        '''
-        super(NerveNetGNN, self).__init__(observation_space,
-                                          get_flattened_obs_dim(observation_space))
-        # TODO: either require number of features to be given as argument or extract them from env
-        self.task_name = task_name
-        self.xml_name = xml_name
-        self.xml_assets_path = xml_assets_path
-        device = th.device("cuda:0" if th.cuda.is_available() else "cpu")
-        self.relation_matrix = th.tensor(agent_structure["relation_matrix"]).to_sparse().indices().to(device)
-        self.conv1 = GCNConv(1, 1, node_dim=1)
-        self.conv2 = GCNConv(1, 1, node_dim=1)
-
-        if self.xml_name is None:
-            if isinstance(env, gym.Wrapper):
-                env = env.env
-            self.xml_name = env.robot.model_xml
-        # graph = parse_mujoco_graph(task_name=self.task_name,
-        #                            xml_name=self.xml_name,
-        #                            xml_assets_path=self.xml_assets_path)
-        self.flatten = nn.Flatten()
-
-    def forward(self, observations: th.Tensor) -> th.Tensor:
-        x = observations[..., None]  # [batchsize,num_nodes, num_node_features]
-        x = self.conv1(x, self.relation_matrix)
-        x = F.relu(x)
-        x = F.dropout(x)
-        x = self.conv2(x, self.relation_matrix)
-        return self.flatten(x)
-
-
-# @Hannes: I think we should be able to use ActorCriticPolicy class without any (major) changes
-# we might just get away with just initialising the class with our own features_extractor_class
-# as defined above.
-# The only issue I currently see with that approach is, that I'm not a 100% sure about the
-# calculation of the controler outputs. The NerveNet paper proposed to use a different MLPs for
-# each type of controler node (hips, feet, knees, etc.) to calculate the mean of the policy
-# distribution. However, they to say that in practice they found that one unified controller
-# doesn't hurt the performance, so we might be able to get away with that.
-#
-
-# TODO: Next step: decide which data structure we should use to pass the robot structure to NerveNetGNN
 
 class ActorCriticGNNPolicy(ActorCriticPolicy):
     """
@@ -115,7 +41,7 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
     :param normalize_images: Whether to normalize images or not,
          dividing by 255.0 (True by default)
     :param optimizer_class: The optimizer to use,
-        ``th.optim.Adam`` by default
+        ``torch.optim.Adam`` by default
     :param optimizer_kwargs: Additional keyword arguments,
         excluding the learning rate, to pass to the optimizer
     """
@@ -125,7 +51,8 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
             observation_space: gym.spaces.Space,
             action_space: gym.spaces.Space,
             lr_schedule: Schedule,
-            net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = None,
+            net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = [
+                16, 16, dict(pi=[64, 64], vf=[64, 64])],
             activation_fn: Type[nn.Module] = nn.Tanh,
             ortho_init: bool = True,
             use_sde: bool = False,
@@ -134,13 +61,18 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
             sde_net_arch: Optional[List[int]] = None,
             use_expln: bool = False,
             squash_output: bool = False,
-            features_extractor_class: Type[BaseFeaturesExtractor] = NerveNetGNN,
-            # TODO: use this to pass the robot structure to the NerveNetGNN
+            features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
             features_extractor_kwargs: Optional[Dict[str, Any]] = None,
+            # use these to pass arguments to the NerveNetGNN
+            mlp_extractor_class: Type[nn.Module] = NerveNetGNN,
+            mlp_extractor_kwargs: Optional[Dict[str, Any]] = None,
             normalize_images: bool = True,
-            optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
+            optimizer_class: Type[torch.optim.Optimizer] = torch.optim.Adam,
             optimizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
+
+        self.mlp_extractor_class = mlp_extractor_class
+        self.mlp_extractor_kwargs = mlp_extractor_kwargs
         super(ActorCriticGNNPolicy, self).__init__(
             observation_space,
             action_space,
@@ -161,7 +93,29 @@ class ActorCriticGNNPolicy(ActorCriticPolicy):
             optimizer_kwargs=optimizer_kwargs,
         )
 
-    def _get_latent(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    @property
+    def device(self) -> torch.device:
+        """Infer which device this policy lives on by inspecting its parameters.
+        If it has no parameters, the 'auto' device is used as a fallback.
+
+        Note: The BasePolicy class for some reason returns cpu and not auto as fallback.
+        However, when we use the FlattenExtractor as FeatureExtractor Network there won't have
+        been any parameters defined from which we could infere the correct device, always leading to the fallback.
+        Which means, we wouldn't be able to use the GPU if we also use FlattenExtractor
+        :return:"""
+        for param in self.parameters():
+            return param.device
+        return get_device("auto")
+
+    def _build_mlp_extractor(self) -> None:
+        """
+        Create the policy and value networks.
+        """
+        self.mlp_extractor = self.mlp_extractor_class(
+            self.features_dim, net_arch=self.net_arch, activation_fn=self.activation_fn, device=self.device, **self.mlp_extractor_kwargs
+        )
+
+    def _get_latent(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get the latent code (i.e., activations of the last layer of each network)
         for the different networks.
