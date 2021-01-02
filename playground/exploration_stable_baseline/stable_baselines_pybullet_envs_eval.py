@@ -12,7 +12,7 @@ import gym
 from stable_baselines3 import PPO, A2C
 from stable_baselines3.common.callbacks import CheckpointCallback
 import pybullet_envs  # register pybullet envs from bullet3
-
+import time
 
 model = A2C.load("a2c_ant")
 env_name = 'AntBulletEnv-v0'
@@ -20,13 +20,6 @@ env_name = 'AntBulletEnv-v0'
 env = gym.make(env_name)
 
 env.render()  # call this before env.reset, if you want a window showing the environment
-obs = env.reset()
-for i in range(2):
-    action, _state = model.predict(obs, deterministic=True)
-    obs, reward, done, info = env.step(action)
-    env.render()
-    if done:
-        obs = env.reset()
 
 def evaluate(model, num_episodes=100):
     """
@@ -43,6 +36,7 @@ def evaluate(model, num_episodes=100):
         done = False
         obs = env.reset()
         while not done:
+            time.sleep(0.01)
             # _states are only useful when using LSTM policies
             action, _states = model.predict(obs)
             # here, action, rewards and dones are arrays
