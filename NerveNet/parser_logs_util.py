@@ -2,8 +2,8 @@ import os
 import json
 from pathlib import Path
 
-from graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
-from graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
+from NerveNet.graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
+from NerveNet.graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 
 
 def generate_graph_log(task_name: str,

@@ -9,7 +9,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.policies import ActorCriticPolicy
 import pybullet_envs  # register pybullet envs from bullet3
 
-from actor_critic_gnn_policy import ActorCriticGNNPolicy
+from NerveNet.policies import register_policies
 
 basepath = Path(os.getcwd())
 print(basepath)
@@ -19,7 +19,6 @@ if basepath.name != "tum-adlr-ws21-04":
 
 basepath = Path(os.getcwd())
 
-# %%
 
 graph_logs_dir = basepath / "graph_logs_new"
 graph_logs_dir.exists(), graph_logs_dir
@@ -34,7 +33,7 @@ env = gym.make(task_name)
 log_name = '{}_{}'.format(task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
 checkpoint_callback = CheckpointCallback(save_freq=1000, save_path='runs/' + log_name,
                                          name_prefix='rl_model')
-model = A2C(ActorCriticGNNPolicy,
+model = A2C("GnnPolicy",
             env,
             # reducing batch_size to 1
             # n_steps=1,
