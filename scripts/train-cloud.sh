@@ -17,10 +17,10 @@
 echo "Training cloud ML model"
 
 # IMAGE_REPO_NAME: the image will be stored on Cloud Container Registry
-IMAGE_REPO_NAME=pytorch_gpu_taxi_container
+IMAGE_REPO_NAME=adlr_pybullet_trainer
 
 # IMAGE_TAG: an easily identifiable tag for your docker image
-IMAGE_TAG=taxi_pytorch_gpu
+IMAGE_TAG=latest
 
 # IMAGE_URI: the complete URI location for Cloud Container Registry
 IMAGE_URI=gcr.io/${PROJECT_ID}/${IMAGE_REPO_NAME}:${IMAGE_TAG}
@@ -31,6 +31,8 @@ JOB_NAME=custom_gpu_container_job_$(date +%Y%m%d_%H%M%S)
 # REGION: select a region from https://cloud.google.com/ml-engine/docs/regions
 # or use the default '`us-central1`'. The region is where the model will be deployed.
 REGION=us-central1
+
+BUCKET_ID=adlr-train-logs
 
 # Build the docker image
 docker build -f Dockerfile -t ${IMAGE_URI} ./
@@ -43,20 +45,15 @@ echo "Submitting the training job"
 
 # These variables are passed to the docker image
 JOB_DIR=gs://${BUCKET_ID}/models/gpu
-# Note: these files have already been copied over when the image was built
-TRAIN_FILES=taxi_trips_train.csv
-EVAL_FILES=taxi_trips_eval.csv
 
-gcloud beta ai-platform jobs submit training ${JOB_NAME} \
+
+gcloud ai-platform jobs submit training ${JOB_NAME} \
     --region ${REGION} \
     --master-image-uri ${IMAGE_URI} \
     --scale-tier BASIC_GPU \
-    -- \
-    --train-files ${TRAIN_FILES} \
-    --eval-files ${EVAL_FILES} \
-    --num-epochs=50 \
-    --batch-size=100 \
-    --learning-rate=0.001 \
+    --task-name=AntBulletEnv-v0
+    --policy=GnnPolicy
+    --alg=A2C
     --job-dir=${JOB_DIR}
 
 # Stream the logs from the job
