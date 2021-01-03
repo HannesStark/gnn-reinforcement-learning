@@ -36,8 +36,6 @@ EVAL_FILES=taxi_trips_eval.csv
 # Test your docker image locally
 echo "Running the Docker Image"
 docker run ${IMAGE_URI} \
-        --train-files ${TRAIN_FILES} \
-        --eval-files ${EVAL_FILES} \
-        --num-epochs=10 \
-        --batch-size=100 \
-        --learning-rate=0.001
+        --task-name=AntBulletEnv-v0
+        --policy=GnnPolicy
+        --alg=A2C
