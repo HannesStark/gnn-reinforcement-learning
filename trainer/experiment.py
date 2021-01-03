@@ -56,19 +56,19 @@ def run(args):
     log_name = '{}_{}'.format(
         task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
     checkpoint_callback = CheckpointCallback(save_freq=1000,
-                                             save_path=args["tensorboard_log"] /
+                                             save_path=args["tensorboard_log"] + "/" +
                                              log_name,
                                              name_prefix='rl_model')
     # Create the model
     alg_class = algorithms[args["alg"]]
     alg_kwargs = dict()
-    update_not_none(alg_kwargs, args, "n_step")
+    update_not_none(alg_kwargs, args, "n_steps")
     update_not_none(alg_kwargs, args, "n_epochs")
     update_not_none(alg_kwargs, args, "seed")
 
     policy_kwargs = dict()
     update_not_none(alg_kwargs, args, "net_arch")
-    if "activation_fn" in args.keys():
+    if args["activation_fn"] is not None:
         policy_kwargs["activation_fn"] = activation_functions[args["activation_fn"]]
     if args["policy"] == "GnnPolicy":
         policy_kwargs["mlp_extractor_kwargs"] = {
