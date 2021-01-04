@@ -51,4 +51,4 @@ def evaluate(model, num_episodes=100):
 
     return mean_episode_reward
 
-mean_reward = evaluate(model, num_episodes=3)
+mean_reward = evaluate(model, num_episodes=1)

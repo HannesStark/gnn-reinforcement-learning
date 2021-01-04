@@ -105,7 +105,7 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         :return:"""
         for param in self.parameters():
             return param.device
-        return get_device("cpu")
+        return get_device("auto")
 
     def _build_mlp_extractor(self) -> None:
         """

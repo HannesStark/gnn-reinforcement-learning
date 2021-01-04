@@ -4,6 +4,18 @@ import gym
 from gym import wrappers
 from stable_baselines3 import A2C, PPO
 import pybullet_envs  # register pybullet envs from bullet3
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+
+import gym
+from stable_baselines3 import PPO, A2C
+from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.policies import ActorCriticPolicy
+import pybullet_envs  # register pybullet envs from bullet3
+
+from NerveNet.policies import register_policies
 
 
 def evaluate(model, num_episodes=100):
@@ -36,13 +48,18 @@ def evaluate(model, num_episodes=100):
     return mean_episode_reward
 
 
-env_name = 'AntBulletEnv-v0'
+task_name = 'AntBulletEnv-v0'
 
-env = gym.make(env_name)
+env = gym.make(task_name)
 
-model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = "runs", batch_size=17920)
+model = PPO("MlpPolicy",
+            env,
+            # reducing batch_size to 1
+            n_steps=32,
+            verbose=1,
+            tensorboard_log="runs", batch_size=10000)
 mean_reward_before_train = evaluate(model, num_episodes=4)
-model.learn(total_timesteps=300000, tb_log_name='{}_{}'.format(env_name, datetime.now().strftime('%d-%m_%H-%M-%S')))
+model.learn(total_timesteps=300000, tb_log_name='{}_{}'.format(task_name, datetime.now().strftime('%d-%m_%H-%M-%S')))
 model.save("a2c_ant")
 mean_reward = evaluate(model, num_episodes=4)
 print(mean_reward_before_train)
