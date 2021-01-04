@@ -54,12 +54,11 @@ def get_args():
     args_parser.add_argument(
         '--tensorboard-log',
         help='the log location for tensorboard (if None, no logging)',
-        type=pathlib.Path,
         default="log")
 
     # Algorithm (PPO/A2C) arguments
     args_parser.add_argument(
-        '--n-step',
+        '--n-steps',
         help='The number of steps to run for each environment per update',
         type=int)
 

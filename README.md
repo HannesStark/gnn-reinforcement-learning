@@ -22,7 +22,7 @@ pip install pybullet --upgrade --user
 
 2. Install [Pytorch](https://pytorch.org/) as described [here](https://pytorch.org/get-started/locally/), for example using:
 ```
-conda install pytorch torchvision torchaudio cudatoolkit=11.0 -c pytorch
+conda install pytorch torchvision torchaudio cudatoolkit=10.1 -c pytorch
 ```
 
 3. Install the [PyTorch Geometric](https://github.com/rusty1s/pytorch_geometric) libraries as described [here](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html):

@@ -40,3 +40,4 @@ pip-selfcheck.json
 .idea
 bullet3
 runs
+pip-delete-this-directory.txt

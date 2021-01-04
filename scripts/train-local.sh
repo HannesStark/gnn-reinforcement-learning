@@ -17,10 +17,10 @@
 echo "Training local ML model"
 
 # IMAGE_REPO_NAME: set a local repo name to distinquish our image
-IMAGE_REPO_NAME=pytorch_gpu_adlr_tum_ws21_04_container
+IMAGE_REPO_NAME=adlr_pybullet_trainer
 
 # IMAGE_TAG: an easily identifiable tag for your docker image
-IMAGE_TAG=adlr_tum_ws21_04
+IMAGE_TAG=latest
 
 # IMAGE_URI: the complete URI location for the image
 IMAGE_URI=${IMAGE_REPO_NAME}:${IMAGE_TAG}
@@ -28,10 +28,6 @@ IMAGE_URI=${IMAGE_REPO_NAME}:${IMAGE_TAG}
 # Build the docker image
 docker build -f Dockerfile -t ${IMAGE_URI} ./
 
-# These variables are passed to the docker image
-# Note: these files have already been copied over when the image was built
-TRAIN_FILES=taxi_trips_train.csv
-EVAL_FILES=taxi_trips_eval.csv
 
 # Test your docker image locally
 echo "Running the Docker Image"

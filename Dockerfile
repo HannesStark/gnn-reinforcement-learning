@@ -75,7 +75,7 @@ COPY . .
 RUN pip3 install -e .
 
 # Installs pytorch and its libraries.
-RUN pip3 install torch===1.7.1 torchvision===0.8.2 torchaudio===0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip3 install torch===1.7.0+cu110 torchvision===0.8.2+cu110 torchaudio===0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
 RUN pip3 install torch-scatter -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
 RUN pip3 install torch-sparse -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
 RUN pip3 install torch-cluster -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
@@ -88,7 +88,9 @@ RUN pip3 install pybullet --upgrade --user
 # install stable_baselines3
 RUN pip3 install -e git+https://github.com/DLR-RM/stable-baselines3#egg=stable-baselines3
 
-
+# we need to install tensorflow as well so that pytorch can use the correct tensorboard version
+# which allows to log tensorboard summaries to the google cloud storage (gs://example_bucket/example_file)
+RUN pip3 install tensorflow
 
 # Set up the entry point to invoke the trainer.
 ENTRYPOINT ["python3", "-u", "trainer/task.py"]
