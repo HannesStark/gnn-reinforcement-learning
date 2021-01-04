@@ -40,7 +40,7 @@ env_name = 'AntBulletEnv-v0'
 
 env = gym.make(env_name)
 
-model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = "gs://adlr-train-logs/runs", batch_size=1792)
+model = PPO('MlpPolicy', env, verbose = 1, tensorboard_log = "runs", batch_size=17920)
 mean_reward_before_train = evaluate(model, num_episodes=4)
 model.learn(total_timesteps=300000, tb_log_name='{}_{}'.format(env_name, datetime.now().strftime('%d-%m_%H-%M-%S')))
 model.save("a2c_ant")
