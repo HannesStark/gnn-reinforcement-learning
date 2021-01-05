@@ -52,7 +52,7 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
             action_space: gym.spaces.Space,
             lr_schedule: Schedule,
             net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = [
-                16, 16, dict(pi=[64, 64], vf=[64, 64])],
+                64, 64, 64, 64, dict(pi=[64, 64], vf=[64, 64])],
             activation_fn: Type[nn.Module] = nn.Tanh,
             ortho_init: bool = True,
             use_sde: bool = False,
@@ -112,7 +112,8 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         Create the policy and value networks.
         """
         self.mlp_extractor = self.mlp_extractor_class(
-            self.features_dim, net_arch=self.net_arch, activation_fn=self.activation_fn, device=self.device, **self.mlp_extractor_kwargs
+            self.features_dim, net_arch=self.net_arch, activation_fn=self.activation_fn, device=self.device,
+            **self.mlp_extractor_kwargs
         )
 
     def _get_latent(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:

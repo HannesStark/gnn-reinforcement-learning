@@ -138,7 +138,6 @@ class NerveNetGNN(nn.Module):
                 latent_policy, latent_value of the specified network.
                 If all layers are shared, then ``latent_policy == latent_value``
          """
-        print(observations.shape)
         shared_latent = observations_to_node_attributes(observations,
                                                         self.info["obs_input_mapping"],
                                                         self.info["static_input_mapping"],
