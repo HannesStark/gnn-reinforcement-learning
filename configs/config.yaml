@@ -1,0 +1,5 @@
+task_name: AntBulletEnv-v0
+alg: PPO
+policy: MlpPolicy
+
+device: cpu

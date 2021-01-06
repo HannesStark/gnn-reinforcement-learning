@@ -63,16 +63,34 @@ env = gym.make(task_name)
 #            gae_lambda=0.95,
 #            clip_range=0.2,
 #            vf_coef=0.5)
+#model = PPO("GnnPolicy",
+#            env,
+#            # reducing batch_size to 1
+#            n_steps=1024,
+#            verbose=1,
+#            tensorboard_log="runs", batch_size=32,
+#            learning_rate=1e-3,
+#            gamma=0.99,
+#            gae_lambda=0.95,
+#            clip_range=0.2,
+#            vf_coef=0.5,
+#            policy_kwargs={
+#                'mlp_extractor_kwargs': {
+#                    'task_name': task_name,
+#                    'xml_assets_path': None
+#                }
+#            },
+#            )
 model = PPO("GnnPolicy",
             env,
             # reducing batch_size to 1
-            n_steps=1024,
+            n_steps=2050,
             verbose=1,
-            tensorboard_log="runs", batch_size=32,
-            learning_rate=2.5e-4,
+            tensorboard_log="runs", batch_size=64,
+            learning_rate=3e-4,
             gamma=0.99,
             gae_lambda=0.95,
-            clip_range=0.2,
+            clip_range=5.0,
             vf_coef=0.5,
             policy_kwargs={
                 'mlp_extractor_kwargs': {

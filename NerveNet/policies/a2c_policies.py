@@ -52,7 +52,7 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
             action_space: gym.spaces.Space,
             lr_schedule: Schedule,
             net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = [
-                64, 64, 64, 64, dict(pi=[64, 64], vf=[64, 64])],
+                16, 16, 16, 16, dict(pi=[64, 64], vf=[64, 64])],
             activation_fn: Type[nn.Module] = nn.Tanh,
             ortho_init: bool = True,
             use_sde: bool = False,

@@ -25,86 +25,87 @@ def get_args():
     Returns:
         experiment parameters
     """
-    args_parser = argparse.ArgumentParser()
+    p = argparse.ArgumentParser()
 
-    args_parser.add_argument(
+    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/config.yaml')
+    p.add_argument(
         '--task-name',
         help='The name of the environment to use',
         required=True)
 
-    args_parser.add_argument(
+    p.add_argument(
         '--alg',
         help='The algorithm to be used for training',
         choices=["A2C", "PPO"],
         required=True)
 
-    args_parser.add_argument(
+    p.add_argument(
         '--policy',
         help='The type of model to use.',
         choices=["GnnPolicy", "MlpPolicy"],
         required=True)
 
-    args_parser.add_argument(
+    p.add_argument(
         "--total-timesteps",
         help="The total number of samples (env steps) to train on",
         type=int,
         default=10000
     )
 
-    args_parser.add_argument(
+    p.add_argument(
         '--tensorboard-log',
         help='the log location for tensorboard (if None, no logging)',
         default="log")
 
     # Algorithm (PPO/A2C) arguments
-    args_parser.add_argument(
+    p.add_argument(
         '--n-steps',
         help='The number of steps to run for each environment per update',
         type=int)
 
-    args_parser.add_argument(
+    p.add_argument(
         '--n-epochs',
         help="For PPO: Number of epochs when optimizing the surrogate loss.",
         type=int,
     )
-    args_parser.add_argument(
+    p.add_argument(
         '--seed',
         help='Random seed (default: 42)',
         type=int,
     )
-    args_parser.add_argument(
+    p.add_argument(
         '--device',
         help='Device (cpu, cuda, ...) on which the code should be run.'
              'Setting it to auto, the code will be run on the GPU if possible.',
         default="auto")
 
     # Policy arguments
-    args_parser.add_argument(
+    p.add_argument(
         '--net_arch',
         help='The specification of the policy and value networks',
         type=json.loads)
 
-    args_parser.add_argument(
+    p.add_argument(
         '--activation-fn',
         help='Activation function of the policy and value networks',
         choices=["Tanh", "ReLU"])
 
     # Estimator arguments
-    args_parser.add_argument(
+    p.add_argument(
         '--learning-rate',
         help='Learning rate value for the optimizers.',
         type=float)
 
     # Saved model arguments
-    args_parser.add_argument(
+    p.add_argument(
         '--job-dir',
         help='GCS location to export models')
-    args_parser.add_argument(
+    p.add_argument(
         '--model-name',
         help='The name of your saved model',
         default='model.pth')
 
-    return args_parser.parse_args()
+    return p.parse_args()
 
 
 def main():
