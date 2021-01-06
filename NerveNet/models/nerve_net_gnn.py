@@ -12,7 +12,7 @@ from torch_geometric.nn import GCNConv, MessagePassing
 
 from stable_baselines3.common.utils import get_device
 from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
-from NerveNet.graph_util.observation_mapper import observations_to_node_attributes, relation_matrix_to_adjacency_matrix
+from NerveNet.graph_util.observation_mapper import get_update_masks, observations_to_node_attributes, relation_matrix_to_adjacency_matrix
 
 
 class NerveNetGNN(nn.Module):
@@ -63,6 +63,11 @@ class NerveNetGNN(nn.Module):
         self.edge_index = self.edge_index.to(self.device)
         self.edge_attr = self.edge_attr.to(self.device)
 
+        self.update_masks = get_update_masks(self.info["obs_input_mapping"],
+                                             self.info["static_input_mapping"],
+                                             self.info["input_type_dict"])
+
+        self.shared_input_nets = {}
         shared_net, policy_net, value_net = [], [], []
         # Layer sizes of the network that only belongs to the policy network
         policy_only_layers = []
@@ -71,6 +76,15 @@ class NerveNetGNN(nn.Module):
         last_layer_dim_shared = self.info["num_node_features"]
 
         # from here on we build the network
+
+        self.shared_input_layer_size = 16
+        for group_name, (update_mask, obs_size) in self.update_masks.items():
+            self.shared_input_nets[group_name] = nn.Sequential(
+                nn.Linear(obs_size, self.shared_input_layer_size),
+                activation_fn()
+            ).to(self.device)
+
+        last_layer_dim_shared = self.shared_input_layer_size
 
         # Iterate through the shared layers and build the shared parts of the network
         # only the shared network will have GCN convolutions
@@ -131,6 +145,43 @@ class NerveNetGNN(nn.Module):
         self.flatten = nn.Flatten()
         self.policy_net = nn.Sequential(*policy_net).to(self.device)
         self.value_net = nn.Sequential(*value_net).to(self.device)
+
+    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        """
+            return: 
+                latent_policy, latent_value of the specified network.
+                If all layers are shared, then ``latent_policy == latent_value``
+         """
+        shared_latent = observations_to_node_attributes(observations,
+                                                        self.info["obs_input_mapping"],
+                                                        self.info["static_input_mapping"],
+                                                        self.info["num_nodes"],
+                                                        self.info["num_node_features"]
+                                                        )
+        shared_input = torch.zeros(
+            (*shared_latent.shape[:-1], self.shared_input_layer_size))
+
+        for group_name, (update_mask, obs_size) in self.update_masks.items():
+            shared_input[:, update_mask, :] = self.shared_input_nets[group_name](
+                shared_latent[:, update_mask, 0:obs_size])
+
+        for layer in self.shared_net:
+            if isinstance(layer, MessagePassing):
+                shared_latent = layer(shared_latent, self.edge_index)
+            else:
+                shared_latent = layer(shared_latent)
+
+        shared_latent = self.flatten(shared_latent)
+        shape = shared_latent.shape
+        latent_pi, latent_vf = self.policy_net(
+            shared_latent), self.value_net(shared_latent)
+        return latent_pi, latent_vf
+
+
+class NerveNetGNN_V2(NerveNetGNN):
+    """
+    GNN from NerveNet paper, with partial weight sharing
+    """
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         """
