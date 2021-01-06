@@ -77,8 +77,8 @@ class NerveNetGNN(nn.Module):
 
         # from here on we build the network
 
-        self.shared_input_layer_size = 16
-        for group_name, (update_mask, obs_size) in self.update_masks.items():
+        self.shared_input_layer_size = net_arch[0]
+        for group_name, (_, obs_size) in self.update_masks.items():
             self.shared_input_nets[group_name] = nn.Sequential(
                 nn.Linear(obs_size, self.shared_input_layer_size),
                 activation_fn()
