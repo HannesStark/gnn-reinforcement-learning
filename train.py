@@ -1,9 +1,11 @@
 import argparse
+import copy
 import json
 import os
 
 from datetime import datetime
 
+import pyaml
 import torch
 import yaml
 from torch import nn
@@ -15,11 +17,9 @@ import gym
 from stable_baselines3 import PPO, A2C
 from stable_baselines3.common.callbacks import CheckpointCallback
 
-algorithms = dict(A2C=A2C,
-                  PPO=PPO)
+algorithms = dict(A2C=A2C, PPO=PPO)
 
-activation_functions = dict(Tanh=nn.Tanh,
-                            ReLU=nn.ReLU)
+activation_functions = dict(Tanh=nn.Tanh, ReLU=nn.ReLU)
 
 
 def train(args):
@@ -30,14 +30,17 @@ def train(args):
     print('*************************\n')
 
     # Create the environment
-    print(args)
     env = gym.make(args.task_name)
 
     # Prepare tensorboard logging
-    log_name = '{}_{}'.format(
-        args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
-    checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=args.tensorboard_log + "/" + log_name,
-                                             name_prefix='rl_model')
+    log_name = '{}_{}'.format(args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
+    run_dir = args.tensorboard_log + "/" + log_name
+    checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=run_dir,name_prefix='rl_model')
+    os.mkdir(run_dir)
+    train_args = copy.copy(args)
+    train_args.config = train_args.config.name
+    pyaml.dump(train_args.__dict__, open(os.path.join(run_dir, 'train_arguments.yaml'), 'w'))
+
     # Create the model
     alg_class = algorithms[args.alg]
     alg_kwargs = dict()
@@ -57,9 +60,9 @@ def train(args):
                       tensorboard_log=args.tensorboard_log,
                       learning_rate=args.learning_rate,
                       batch_size=args.batch_size,
+                      n_epochs=args.n_epochs,
                       **alg_kwargs)
 
-    # Train / Test the model
     model.learn(total_timesteps=args.total_timesteps,
                 callback=checkpoint_callback,
                 tb_log_name=log_name)
@@ -69,18 +72,19 @@ def train(args):
 
 def parse_arguments():
     p = argparse.ArgumentParser()
-    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/config.yaml')
+    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/HalfCheetahBulletEnv-v0.yaml')
     p.add_argument('--task_name', help='The name of the environment to use')
     p.add_argument('--alg', help='The algorithm to be used for training', choices=["A2C", "PPO"])
     p.add_argument('--policy', help='The type of model to use.', choices=["GnnPolicy", "MlpPolicy"])
     p.add_argument("--total_timesteps", help="The total number of samples (env steps) to train on", type=int,
-                   default=10000)
+                   default=1000000)
     p.add_argument('--tensorboard_log', help='the log location for tensorboard (if None, no logging)', default="runs")
     p.add_argument('--n_steps', help='The number of steps to run for each environment per update', type=int,
                    default=1024)
     p.add_argument('--batch_size', help='The number of steps to run for each environment per update', type=int,
                    default=64)
-    p.add_argument('--n_epochs', help="For PPO: Number of epochs when optimizing the surrogate loss.", type=int)
+    p.add_argument('--n_epochs', help="For PPO: Number of epochs when optimizing the surrogate loss.", type=int,
+                   default=10)
     p.add_argument('--seed', help='Random seed', type=int, default=1)
     p.add_argument('--device', help='Device (cpu, cuda, ...) on which the code should be run.'
                                     'Setting it to auto, the code will be run on the GPU if possible.', default="auto")

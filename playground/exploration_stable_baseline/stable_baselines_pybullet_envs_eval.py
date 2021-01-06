@@ -14,7 +14,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 import pybullet_envs  # register pybullet envs from bullet3
 import time
 
-model = A2C.load("a2c_ant")
+model = PPO.load("a2c_ant")
 env_name = 'AntBulletEnv-v0'
 
 env = gym.make(env_name)
