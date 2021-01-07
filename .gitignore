@@ -29,6 +29,7 @@ pip-selfcheck.json
 /build
 /dist
 *.eggs
+/src
 
 # Visual Studio build files
 .vscode/

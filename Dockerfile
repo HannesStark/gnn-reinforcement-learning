@@ -33,6 +33,8 @@ RUN apt-get install -y --no-install-recommends \
 RUN  python3 --version
 RUN  pip3 --version
 
+RUN pip3 install --upgrade pip
+
 WORKDIR /root
 
 # Installs cloudml-hypertune for hyperparameter tuning.
