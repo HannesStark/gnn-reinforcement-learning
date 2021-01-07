@@ -52,45 +52,16 @@ task_name = 'AntBulletEnv-v0'
 
 env = gym.make(task_name)
 
-# model = PPO("MlpPolicy",
-#            env,
-#            # reducing batch_size to 1
-#            n_steps=1024,
-#            verbose=1,
-#            tensorboard_log="runs", batch_size=32,
-#            learning_rate=2.5e-4,
-#            gamma=0.99,
-#            gae_lambda=0.95,
-#            clip_range=0.2,
-#            vf_coef=0.5)
-#model = PPO("GnnPolicy",
-#            env,
-#            # reducing batch_size to 1
-#            n_steps=1024,
-#            verbose=1,
-#            tensorboard_log="runs", batch_size=32,
-#            learning_rate=1e-3,
-#            gamma=0.99,
-#            gae_lambda=0.95,
-#            clip_range=0.2,
-#            vf_coef=0.5,
-#            policy_kwargs={
-#                'mlp_extractor_kwargs': {
-#                    'task_name': task_name,
-#                    'xml_assets_path': None
-#                }
-#            },
-#            )
 model = PPO("GnnPolicy",
             env,
             # reducing batch_size to 1
-            n_steps=2050,
+            n_steps=1024,
             verbose=1,
-            tensorboard_log="runs", batch_size=64,
-            learning_rate=3e-4,
+            tensorboard_log="runs", batch_size=32,
+            learning_rate=1e-3,
             gamma=0.99,
             gae_lambda=0.95,
-            clip_range=5.0,
+            clip_range=0.2,
             vf_coef=0.5,
             policy_kwargs={
                 'mlp_extractor_kwargs': {
@@ -99,6 +70,7 @@ model = PPO("GnnPolicy",
                 }
             },
             )
+
 mean_reward_before_train = evaluate(model, num_episodes=4)
 model.learn(total_timesteps=2000000, tb_log_name='{}_{}'.format(task_name, datetime.now().strftime('%d-%m_%H-%M-%S')))
 model.save("a2c_ant")

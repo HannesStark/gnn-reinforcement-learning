@@ -93,7 +93,7 @@ def parse_arguments():
                    choices=["Tanh", "ReLU"])
     p.add_argument('--learning_rate', help='Learning rate value for the optimizers.', type=float, default=3.0e-4)
     p.add_argument('--job_dir', help='GCS location to export models')
-    p.add_argument('--model_name', help='The name of your saved model', default='model.pth')
+    p.add_argument('--model_name', help='The name of your saved model', default='model.zip')
     args = p.parse_args()
     if args.config:
         data = yaml.load(args.config, Loader=yaml.FullLoader)

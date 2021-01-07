@@ -103,7 +103,7 @@ def get_args():
     p.add_argument(
         '--model-name',
         help='The name of your saved model',
-        default='model.pth')
+        default='model.pth.zip')
 
     return p.parse_args()
 
