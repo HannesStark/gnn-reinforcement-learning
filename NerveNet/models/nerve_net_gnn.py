@@ -209,8 +209,6 @@ class NerveNetGNN(nn.Module):
             embedding[:, update_mask, :] = self.shared_input_nets[group_name](
                 sp_embedding[:, update_mask, 0:obs_size])
 
-        embedding
-
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
                 embedding = layer(embedding, self.edge_index,
