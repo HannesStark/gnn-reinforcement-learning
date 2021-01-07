@@ -21,7 +21,6 @@ basepath = Path(os.getcwd())
 
 
 graph_logs_dir = basepath / "graph_logs_new"
-graph_logs_dir.exists(), graph_logs_dir
 
 task_name = 'AntBulletEnv-v0'
 nervenet_assets_dir = Path(os.getcwd()).parent / \

@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import gym
 import torch
 from torch import nn
+from torch_geometric.nn import GCNConv
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.type_aliases import Schedule
@@ -10,6 +11,7 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
 from stable_baselines3.common.utils import get_device
 from NerveNet.models.nerve_net_gnn import NerveNetGNN
+from NerveNet.models.nerve_net_conv import NerveNetConv
 
 
 class ActorCriticGnnPolicy(ActorCriticPolicy):
@@ -51,8 +53,22 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
             observation_space: gym.spaces.Space,
             action_space: gym.spaces.Space,
             lr_schedule: Schedule,
-            net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = [
-                16, 16, 16, 16, dict(pi=[64, 64], vf=[64, 64])],
+            net_arch: Dict[str, List[Tuple[nn.Module, int]]] = {
+                "input": [
+                    (nn.Linear, 12)
+                ],
+                "propagate": [
+                    (NerveNetConv, 12),
+                    (NerveNetConv, 12),
+                    (NerveNetConv, 12)
+                ],
+                "policy": [
+                    (nn.Linear, 64)
+                ],
+                "value": [
+                    (nn.Linear, 64)
+                ]
+            },
             activation_fn: Type[nn.Module] = nn.Tanh,
             ortho_init: bool = True,
             use_sde: bool = False,
@@ -111,10 +127,9 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         """
         Create the policy and value networks.
         """
-        self.mlp_extractor = self.mlp_extractor_class(
-            self.features_dim, net_arch=self.net_arch, activation_fn=self.activation_fn, device=self.device,
-            **self.mlp_extractor_kwargs
-        )
+        self.mlp_extractor = self.mlp_extractor_class(net_arch=self.net_arch, activation_fn=self.activation_fn, device=self.device,
+                                                      **self.mlp_extractor_kwargs
+                                                      )
 
     def _get_latent(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """

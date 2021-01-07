@@ -13,6 +13,7 @@ from torch_geometric.nn import GCNConv, MessagePassing
 from stable_baselines3.common.utils import get_device
 from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
 from NerveNet.graph_util.observation_mapper import get_update_masks, observations_to_node_attributes, relation_matrix_to_adjacency_matrix
+from NerveNet.models.nerve_net_conv import NerveNetConv
 
 
 class NerveNetGNN(nn.Module):
@@ -25,8 +26,7 @@ class NerveNetGNN(nn.Module):
     """
 
     def __init__(self,
-                 feature_dim: int,
-                 net_arch: List[Union[int, Dict[str, List[int]]]],
+                 net_arch: Dict[str, List[Tuple[nn.Module, int]]],
                  activation_fn: Type[nn.Module],
                  device: Union[torch.device, str] = "auto",
                  task_name: str = None,
@@ -34,6 +34,47 @@ class NerveNetGNN(nn.Module):
                  xml_assets_path: Path = None):
         '''
         TODO add documentation
+
+        Parameters:
+            net_arch:
+                Specifies the network architecture. The network consists of four parts:
+                First we have two parts that make out the shared network. This takes as
+                input the observations mapped to the node embedding space.
+                The mapping is done based on the group a node belongs to (hips, feet, ankles, etc.).
+                Because this mapping results in differently sized node features (e.g. ankles
+                may have more node features than feet) the first part of the shared network
+                is called the input model, which produces a fixed-size node embedding vector
+                for all nodes regardless of their group.
+                The second part of the shared network is a GNN which is called the propagation model.
+                It takes the fixed-size embedding vectors and the adjacency matrix and outputs the new
+                node embeddings.
+                Afterwards we have two seperate networks, the value model and policy model.
+                Both take the new node embeddings and output a latent representation for the policy mean
+                or the value scalar
+
+                The network architecture is provided as a dictionary of lists with four keys
+                corresponding to the four parts of the network as described above.
+                Each list is a list of tuples of type (nn.Module, int) where the first element
+                is the layer class that should be used and the second element is the output
+                size of this layer.
+
+                For exmaple:
+                net_arch = {
+                    "input": [
+                        (nn.Linear, 8)
+                    ],
+                    "propagate": [
+                        (GCNConv, 12),
+                        (nn.Linear, 16),
+                        (GCNConv, 12)
+                    ],
+                    "policy": [
+                        (nn.Linear, 16)
+                    ],
+                    "value": [
+                        (nn.Linear, 16)
+                    ]
+                }
         '''
         super(NerveNetGNN, self).__init__()
 
@@ -73,67 +114,67 @@ class NerveNetGNN(nn.Module):
         policy_only_layers = []
         # Layer sizes of the network that only belongs to the value network
         value_only_layers = []
-        last_layer_dim_shared = self.info["num_node_features"]
+
+        assert "input" in net_arch, "An input model must be specified in the net_arch attribute"
+        assert "propagate" in net_arch, "A propagation model must be specified in the net_arch attribute"
+        assert "policy" in net_arch, "A policy model must be specified in the net_arch attribute"
+        assert "value" in net_arch, "A value model must be specified in the net_arch attribute"
 
         # from here on we build the network
+        # first we build the input model, where each group of nodes gets
+        # its own instance of the input model
+        for group_name, (_, node_obs_size) in self.update_masks.items():
+            shared_input_layers = []
+            last_layer_dim_input = node_obs_size
+            for layer_class, layer_size in net_arch["input"]:
+                shared_input_layers.append(layer_class(
+                    last_layer_dim_input, layer_size))
+                shared_input_layers.append(activation_fn())
+                last_layer_dim_input = layer_size
 
-        self.shared_input_layer_size = net_arch[0]
-        for group_name, (_, obs_size) in self.update_masks.items():
             self.shared_input_nets[group_name] = nn.Sequential(
-                nn.Linear(obs_size, self.shared_input_layer_size),
-                activation_fn()
-            ).to(self.device)
+                *shared_input_layers).to(self.device)
 
-        last_layer_dim_shared = self.shared_input_layer_size
+        self.last_layer_dim_input = last_layer_dim_input
+        last_layer_dim_shared = last_layer_dim_input
 
         # Iterate through the shared layers and build the shared parts of the network
-        # only the shared network will have GCN convolutions
-        for idx, layer in enumerate(net_arch):
-            if isinstance(layer, int):  # Check that this is a shared layer
-                layer_size = layer
-                # TODO: give layer a meaningful name
-                shared_net.append(GCNConv(last_layer_dim_shared,
-                                          layer_size,
-                                          # we already added self_loops ourselves
-                                          add_self_loops=False).to(self.device))
-
-                shared_net.append(activation_fn())
-                last_layer_dim_shared = layer_size
+        # only the shared network may have GCN convolutions
+        for layer_class, layer_size in net_arch["propagate"]:
+            # TODO: give layer a meaningful name
+            if layer_class == GCNConv:
+                # for GCN Conv we need an additional parameter for the constructor
+                shared_net.append(layer_class(last_layer_dim_shared,
+                                              layer_size,
+                                              # we already added self_loops ourselves
+                                              add_self_loops=False).to(self.device))
+            elif layer_class == NerveNetConv:
+                shared_net.append(layer_class(last_layer_dim_shared,
+                                              layer_size,
+                                              self.update_masks).to(self.device))
             else:
-                assert isinstance(
-                    layer, dict), "Error: the net_arch list can only contain ints and dicts"
-                if "pi" in layer:
-                    assert isinstance(
-                        layer["pi"], list), "Error: net_arch[-1]['pi'] must contain a list of integers."
-                    policy_only_layers = layer["pi"]
+                shared_net.append(layer_class(last_layer_dim_shared,
+                                              layer_size).to(self.device))
+            shared_net.append(activation_fn())
+            last_layer_dim_shared = layer_size
 
-                if "vf" in layer:
-                    assert isinstance(
-                        layer["vf"], list), "Error: net_arch[-1]['vf'] must contain a list of integers."
-                    value_only_layers = layer["vf"]
-                break  # From here on the network splits up in policy and value network
+        # Build the non-shared part of the network
 
-        # in the shared network we use GCN convolutions, which means last_layer_dim_shared is the number of
+        # in the shared network we use GCN convolutions,
+        # which means last_layer_dim_shared is the number of
         # dimensions we have for every single node
         last_layer_dim_pi = self.info["num_nodes"] * last_layer_dim_shared
         last_layer_dim_vf = self.info["num_nodes"] * last_layer_dim_shared
 
-        # Build the non-shared part of the network
-        # these will be plain old MLPs
-        for idx, (pi_layer_size, vf_layer_size) in enumerate(zip_longest(policy_only_layers, value_only_layers)):
-            if pi_layer_size is not None:
-                assert isinstance(
-                    pi_layer_size, int), "Error: net_arch[-1]['pi'] must only contain integers."
-                policy_net.append(nn.Linear(last_layer_dim_pi, pi_layer_size))
-                policy_net.append(activation_fn())
-                last_layer_dim_pi = pi_layer_size
+        for layer_class, layer_size in net_arch["policy"]:
+            policy_net.append(layer_class(last_layer_dim_pi, layer_size))
+            policy_net.append(activation_fn())
+            last_layer_dim_pi = layer_size
 
-            if vf_layer_size is not None:
-                assert isinstance(
-                    vf_layer_size, int), "Error: net_arch[-1]['vf'] must only contain integers."
-                value_net.append(nn.Linear(last_layer_dim_vf, vf_layer_size))
-                value_net.append(activation_fn())
-                last_layer_dim_vf = vf_layer_size
+        for layer_class, layer_size in net_arch["value"]:
+            value_net.append(layer_class(last_layer_dim_vf, layer_size))
+            value_net.append(activation_fn())
+            last_layer_dim_vf = layer_size
 
         # Save dim, used to create the distributions
         self.latent_dim_pi = last_layer_dim_pi
@@ -148,61 +189,37 @@ class NerveNetGNN(nn.Module):
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         """
-            return: 
+            return:
                 latent_policy, latent_value of the specified network.
                 If all layers are shared, then ``latent_policy == latent_value``
          """
-        shared_latent = observations_to_node_attributes(observations,
-                                                        self.info["obs_input_mapping"],
-                                                        self.info["static_input_mapping"],
-                                                        self.info["num_nodes"],
-                                                        self.info["num_node_features"]
-                                                        )
-        shared_input = torch.zeros(
-            (*shared_latent.shape[:-1], self.shared_input_layer_size))
+        # "sparse" embedding matrix
+        sp_embedding = observations_to_node_attributes(observations,
+                                                       self.info["obs_input_mapping"],
+                                                       self.info["static_input_mapping"],
+                                                       self.info["num_nodes"],
+                                                       self.info["num_node_features"]
+                                                       )
+
+        # dense embedding matrix
+        embedding = torch.zeros(
+            (*sp_embedding.shape[:-1], self.last_layer_dim_input))
 
         for group_name, (update_mask, obs_size) in self.update_masks.items():
-            shared_input[:, update_mask, :] = self.shared_input_nets[group_name](
-                shared_latent[:, update_mask, 0:obs_size])
+            embedding[:, update_mask, :] = self.shared_input_nets[group_name](
+                sp_embedding[:, update_mask, 0:obs_size])
+
+        embedding
 
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
-                shared_latent = layer(shared_latent, self.edge_index)
+                embedding = layer(embedding, self.edge_index,
+                                  self.update_masks)
             else:
-                shared_latent = layer(shared_latent)
+                embedding = layer(embedding)
 
-        shared_latent = self.flatten(shared_latent)
-        shape = shared_latent.shape
+        embedding = self.flatten(embedding)
+
         latent_pi, latent_vf = self.policy_net(
-            shared_latent), self.value_net(shared_latent)
-        return latent_pi, latent_vf
-
-
-class NerveNetGNN_V2(NerveNetGNN):
-    """
-    GNN from NerveNet paper, with partial weight sharing
-    """
-
-    def forward(self, observations: torch.Tensor) -> torch.Tensor:
-        """
-            return: 
-                latent_policy, latent_value of the specified network.
-                If all layers are shared, then ``latent_policy == latent_value``
-         """
-        shared_latent = observations_to_node_attributes(observations,
-                                                        self.info["obs_input_mapping"],
-                                                        self.info["static_input_mapping"],
-                                                        self.info["num_nodes"],
-                                                        self.info["num_node_features"]
-                                                        )
-        for layer in self.shared_net:
-            if isinstance(layer, MessagePassing):
-                shared_latent = layer(shared_latent, self.edge_index)
-            else:
-                shared_latent = layer(shared_latent)
-
-        shared_latent = self.flatten(shared_latent)
-        shape = shared_latent.shape
-        latent_pi, latent_vf = self.policy_net(
-            shared_latent), self.value_net(shared_latent)
+            embedding), self.value_net(embedding)
         return latent_pi, latent_vf
