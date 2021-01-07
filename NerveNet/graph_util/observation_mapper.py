@@ -58,3 +58,27 @@ def observations_to_node_attributes(observations: torch.Tensor,
                 static_input_mapping[i]).expand(batch_size, -1).float().to(observations.device)
 
     return attributes
+
+
+def get_update_masks(obs_input_mapping: dict,
+                     static_input_mapping: dict,
+                     input_type_dict: dict):
+    """
+        returns: 
+            input_mask_dict: 
+                A dictionary containing groups of nodes that should share the 
+                same update function instance
+    """
+
+    static_input_mapping = {int(k): np.concatenate(list(v.values()))
+                            for k, v in static_input_mapping.items()}
+    static_input_mapping[0] = np.array([])
+
+    input_mask_dict = {}
+    for group_name, group_nodes in input_type_dict.items():
+        # assumes every node of a group has the same input sizes
+        in_size = len(obs_input_mapping[group_nodes[0]])
+        static_in_size = len(static_input_mapping[group_nodes[0]])
+        input_mask_dict[group_name] = (group_nodes, in_size + static_in_size)
+
+    return input_mask_dict
