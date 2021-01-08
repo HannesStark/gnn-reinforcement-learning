@@ -8,9 +8,12 @@ from datetime import datetime
 import pyaml
 import torch
 import yaml
+from stable_baselines3.common.utils import get_device
 from torch import nn
 
 import pybullet_envs  # register pybullet envs from bullet3
+
+from NerveNet.models.nerve_net_conv import NerveNetConv
 from NerveNet.policies import register_policies
 
 import gym
@@ -35,7 +38,7 @@ def train(args):
     # Prepare tensorboard logging
     log_name = '{}_{}'.format(args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
     run_dir = args.tensorboard_log + "/" + log_name
-    checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=run_dir,name_prefix='rl_model')
+    checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=run_dir, name_prefix='rl_model')
     os.mkdir(run_dir)
     train_args = copy.copy(args)
     train_args.config = train_args.config.name
@@ -47,9 +50,30 @@ def train(args):
     policy_kwargs = dict()
     if args.activation_fn is not None:
         policy_kwargs["activation_fn"] = activation_functions[args.activation_fn]
+    # policy_kwargs['device'] = args.device if args.device is not None else get_device('auto')
     if args.policy == "GnnPolicy":
         policy_kwargs["mlp_extractor_kwargs"] = {
-            "task_name": args.task_name}
+            "task_name": args.task_name,
+        }
+        policy_kwargs['net_arch'] = {
+            "input": [
+                (nn.Linear, 12),
+                (nn.Linear, 16)
+            ],
+            "propagate": [
+                (NerveNetConv, 12),
+                (NerveNetConv, 12),
+                (NerveNetConv, 12)
+            ],
+            "policy": [
+                (nn.Linear, 16),
+                (nn.Linear, 16)
+            ],
+            "value": [
+                (nn.Linear, 16),
+                (nn.Linear, 16)
+            ]
+        }
 
     model = alg_class(args.policy,
                       env,

@@ -1,6 +1,7 @@
-from typing import Optional, Tuple, Dict, List
+from typing import Optional, Tuple, Dict, List, Union
 
 import torch
+from stable_baselines3.common.utils import get_device
 from torch import Tensor
 from torch import nn
 from torch.nn import Parameter
@@ -9,7 +10,6 @@ from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import add_remaining_self_loops
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from torch_geometric.typing import Adj, OptTensor, PairTensor
-
 
 from NerveNet.models.utils import glorot, zeros
 
@@ -39,6 +39,7 @@ class NerveNetConv(MessagePassing):
                  in_channels: int,
                  out_channels: int,
                  update_masks: Dict[str, Tuple[List[int], int]],
+                 device: Union[torch.device, str] = "auto",
                  cached: bool = False,
                  bias: bool = True,
                  **kwargs):
@@ -51,6 +52,7 @@ class NerveNetConv(MessagePassing):
         self.update_masks = update_masks
         self.use_bias = bias
         self.cached = cached
+        self.device = get_device(device)
 
         self._cached_edge_index = None
         self._cached_adj_t = None
@@ -59,11 +61,11 @@ class NerveNetConv(MessagePassing):
         for group_name, _ in update_masks.items():
             self.update_models_parameter[group_name] = {}
             self.update_models_parameter[group_name]["weights"] = Parameter(
-                torch.Tensor(in_channels, out_channels))
+                torch.Tensor(in_channels, out_channels)).to(self.device)
 
             if self.use_bias:
                 self.update_models_parameter[group_name]["bias"] = Parameter(
-                    torch.Tensor(out_channels))
+                    torch.Tensor(out_channels)).to(self.device)
             else:
                 self.update_models_parameter[group_name]["bias"] = None
 
@@ -109,7 +111,7 @@ class NerveNetConv(MessagePassing):
         """
 
         embedding = torch.zeros(
-            (*inputs.shape[:-1], self.out_channels))
+            (*inputs.shape[:-1], self.out_channels)).to(self.device)
 
         for group_name, (update_mask, _) in self.update_masks.items():
             masked_inputs = inputs[:, update_mask]

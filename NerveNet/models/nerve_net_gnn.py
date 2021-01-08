@@ -9,10 +9,10 @@ import torch.nn.functional as F
 from torch import nn
 from torch_geometric.nn import GCNConv, MessagePassing
 
-
 from stable_baselines3.common.utils import get_device
 from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
-from NerveNet.graph_util.observation_mapper import get_update_masks, observations_to_node_attributes, relation_matrix_to_adjacency_matrix
+from NerveNet.graph_util.observation_mapper import get_update_masks, observations_to_node_attributes, \
+    relation_matrix_to_adjacency_matrix
 from NerveNet.models.nerve_net_conv import NerveNetConv
 
 
@@ -151,7 +151,7 @@ class NerveNetGNN(nn.Module):
             elif layer_class == NerveNetConv:
                 shared_net.append(layer_class(last_layer_dim_shared,
                                               layer_size,
-                                              self.update_masks).to(self.device))
+                                              self.update_masks, device=device).to(self.device))
             else:
                 shared_net.append(layer_class(last_layer_dim_shared,
                                               layer_size).to(self.device))
@@ -167,13 +167,13 @@ class NerveNetGNN(nn.Module):
         last_layer_dim_vf = self.info["num_nodes"] * last_layer_dim_shared
 
         for layer_class, layer_size in net_arch["policy"]:
-            policy_net.append(layer_class(last_layer_dim_pi, layer_size))
-            policy_net.append(activation_fn())
+            policy_net.append(layer_class(last_layer_dim_pi, layer_size).to(self.device))
+            policy_net.append(activation_fn().to(self.device))
             last_layer_dim_pi = layer_size
 
         for layer_class, layer_size in net_arch["value"]:
-            value_net.append(layer_class(last_layer_dim_vf, layer_size))
-            value_net.append(activation_fn())
+            value_net.append(layer_class(last_layer_dim_vf, layer_size).to(self.device))
+            value_net.append(activation_fn().to(self.device))
             last_layer_dim_vf = layer_size
 
         # Save dim, used to create the distributions
@@ -199,24 +199,23 @@ class NerveNetGNN(nn.Module):
                                                        self.info["static_input_mapping"],
                                                        self.info["num_nodes"],
                                                        self.info["num_node_features"]
-                                                       )
+                                                       ).to(self.device)
 
         # dense embedding matrix
         embedding = torch.zeros(
-            (*sp_embedding.shape[:-1], self.last_layer_dim_input))
+            (*sp_embedding.shape[:-1], self.last_layer_dim_input)).to(self.device)
 
         for group_name, (update_mask, obs_size) in self.update_masks.items():
-            embedding[:, update_mask, :] = self.shared_input_nets[group_name](
-                sp_embedding[:, update_mask, 0:obs_size])
+            embedding[:, update_mask, :] = self.shared_input_nets[group_name](sp_embedding[:, update_mask, 0:obs_size])
 
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
                 embedding = layer(embedding, self.edge_index,
-                                  self.update_masks)
+                                  self.update_masks).to(self.device)
             else:
-                embedding = layer(embedding)
+                embedding = layer(embedding).to(self.device)
 
-        embedding = self.flatten(embedding)
+        embedding = self.flatten(embedding).to(self.device)
 
         latent_pi, latent_vf = self.policy_net(
             embedding), self.value_net(embedding)
