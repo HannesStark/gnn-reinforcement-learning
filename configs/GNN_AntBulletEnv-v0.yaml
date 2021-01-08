@@ -4,7 +4,7 @@ policy: GnnPolicy
 
 device: cpu
 
-
+learning_rate: 7.0e-3
 total_timesteps: 1000000
 n_steps: 1024
 batch_size: 64
