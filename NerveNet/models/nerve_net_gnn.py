@@ -216,7 +216,6 @@ class NerveNetGNN(nn.Module):
                 embedding = layer(embedding).to(self.device)
 
         embedding = self.flatten(embedding).to(self.device)
-
         latent_pi, latent_vf = self.policy_net(
             embedding), self.value_net(embedding)
         return latent_pi, latent_vf

@@ -54,6 +54,7 @@ def train(args):
     if args.policy == "GnnPolicy":
         policy_kwargs["mlp_extractor_kwargs"] = {
             "task_name": args.task_name,
+            'device': args.device
         }
         policy_kwargs['net_arch'] = {
             "input": [
