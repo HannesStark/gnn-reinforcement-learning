@@ -27,7 +27,7 @@ def get_args():
     """
     p = argparse.ArgumentParser()
 
-    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/mlp.yaml')
+    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/AntBulletEnv-v0.yaml')
     p.add_argument(
         '--task-name',
         help='The name of the environment to use',
