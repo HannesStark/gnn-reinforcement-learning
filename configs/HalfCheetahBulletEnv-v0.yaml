@@ -1,3 +1,5 @@
+experiment_name: Mlp
+
 task_name: HalfCheetahBulletEnv-v0
 alg: PPO
 policy: MlpPolicy

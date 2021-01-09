@@ -5,6 +5,7 @@ import os
 
 from datetime import datetime
 
+import json
 import pyaml
 import torch
 import yaml
@@ -18,7 +19,9 @@ from NerveNet.policies import register_policies
 
 import gym
 from stable_baselines3 import PPO, A2C
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
+
+from util import LoggingCallback
 
 algorithms = dict(A2C=A2C, PPO=PPO)
 
@@ -35,11 +38,36 @@ def train(args):
     # Create the environment
     env = gym.make(args.task_name)
 
+    #define network architecture
+    net_arch ={
+            "input": [
+                (nn.Linear, 16),
+                (nn.Linear, 16)
+            ],
+            "propagate": [
+                (NerveNetConv, 16),
+                (NerveNetConv, 16),
+                (NerveNetConv, 16),
+                (NerveNetConv, 16)
+            ],
+            "policy": [
+                (nn.Linear, 64),
+                (nn.Linear, 64)
+            ],
+            "value": [
+                (nn.Linear, 64),
+                (nn.Linear, 64)
+            ]
+        }
+
     # Prepare tensorboard logging
-    log_name = '{}_{}'.format(args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
+    log_name = '{}_{}_{}'.format(args.experiment_name, args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
     run_dir = args.tensorboard_log + "/" + log_name
-    checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=run_dir, name_prefix='rl_model')
     os.mkdir(run_dir)
+    checkpoint_callback = CheckpointCallback(save_freq=100000, save_path=run_dir, name_prefix='rl_model')
+    logging_callback = LoggingCallback(logpath=run_dir)
+    with open(os.path.join(run_dir, 'net_arch.txt'), 'w') as fp:
+        fp.write(str(net_arch))
     train_args = copy.copy(args)
     train_args.config = train_args.config.name
     pyaml.dump(train_args.__dict__, open(os.path.join(run_dir, 'train_arguments.yaml'), 'w'))
@@ -56,25 +84,7 @@ def train(args):
             "task_name": args.task_name,
             'device': args.device
         }
-        policy_kwargs['net_arch'] = {
-            "input": [
-                (nn.Linear, 12),
-                (nn.Linear, 16)
-            ],
-            "propagate": [
-                (NerveNetConv, 12),
-                (NerveNetConv, 12),
-                (NerveNetConv, 12)
-            ],
-            "policy": [
-                (nn.Linear, 16),
-                (nn.Linear, 16)
-            ],
-            "value": [
-                (nn.Linear, 16),
-                (nn.Linear, 16)
-            ]
-        }
+        policy_kwargs['net_arch'] = net_arch
 
     model = alg_class(args.policy,
                       env,
@@ -89,7 +99,7 @@ def train(args):
                       **alg_kwargs)
 
     model.learn(total_timesteps=args.total_timesteps,
-                callback=checkpoint_callback,
+                callback=CallbackList([checkpoint_callback, logging_callback]),
                 tb_log_name=log_name)
 
     model.save(os.path.join(args.tensorboard_log + "/" + log_name, args.model_name))
@@ -97,7 +107,7 @@ def train(args):
 
 def parse_arguments():
     p = argparse.ArgumentParser()
-    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/GNN_AntBulletEnv-v0.yaml')
+    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/GNN_AntBulletEnv-v0_lr3e-4.yaml')
     p.add_argument('--task_name', help='The name of the environment to use')
     p.add_argument('--alg', help='The algorithm to be used for training', choices=["A2C", "PPO"])
     p.add_argument('--policy', help='The type of model to use.', choices=["GnnPolicy", "MlpPolicy"])
@@ -118,6 +128,7 @@ def parse_arguments():
                    choices=["Tanh", "ReLU"])
     p.add_argument('--learning_rate', help='Learning rate value for the optimizers.', type=float, default=3.0e-4)
     p.add_argument('--job_dir', help='GCS location to export models')
+    p.add_argument('--experiment_name', help='name to append to the tensorboard logs directory', default='')
     p.add_argument('--model_name', help='The name of your saved model', default='model.zip')
     args = p.parse_args()
     if args.config:

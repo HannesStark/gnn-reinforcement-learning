@@ -1,3 +1,5 @@
+experiment_name: Mlp
+
 task_name: InvertedPendulumBulletEnv-v0
 alg: PPO
 policy: MlpPolicy
