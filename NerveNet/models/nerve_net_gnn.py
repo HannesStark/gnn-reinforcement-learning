@@ -28,6 +28,7 @@ class NerveNetGNN(nn.Module):
     def __init__(self,
                  net_arch: Dict[str, List[Tuple[nn.Module, int]]],
                  activation_fn: Type[nn.Module],
+                 gnn_for_values=False,
                  device: Union[torch.device, str] = "auto",
                  task_name: str = None,
                  xml_name: str = None,
@@ -82,6 +83,7 @@ class NerveNetGNN(nn.Module):
         self.xml_name = xml_name
         self.xml_assets_path = xml_assets_path
         self.device = get_device(device)
+        self.gnn_for_values = gnn_for_values
 
         self.info = parse_mujoco_graph(task_name=self.task_name,
                                        xml_name=self.xml_name,
@@ -187,7 +189,7 @@ class NerveNetGNN(nn.Module):
         self.policy_net = nn.Sequential(*policy_net).to(self.device)
         self.value_net = nn.Sequential(*value_net).to(self.device)
 
-    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+    def forward(self, observations: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
             return:
                 latent_policy, latent_value of the specified network.
@@ -210,12 +212,18 @@ class NerveNetGNN(nn.Module):
 
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
-                embedding = layer(embedding, self.edge_index,
-                                  self.update_masks).to(self.device)
+                gnn_embedding = layer(embedding, self.edge_index,
+                                      self.update_masks).to(self.device)
             else:
-                embedding = layer(embedding).to(self.device)
+                gnn_embedding = layer(embedding).to(self.device)
 
+        gnn_embedding = self.flatten(gnn_embedding).to(self.device)
         embedding = self.flatten(embedding).to(self.device)
-        latent_pi, latent_vf = self.policy_net(
-            embedding), self.value_net(embedding)
+
+        if self.gnn_for_values:
+            latent_vf = self.value_net(gnn_embedding)
+        else:
+            latent_vf = self.value_net(embedding)
+
+        latent_pi = self.policy_net(gnn_embedding)
         return latent_pi, latent_vf

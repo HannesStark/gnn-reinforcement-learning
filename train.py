@@ -38,27 +38,27 @@ def train(args):
     # Create the environment
     env = gym.make(args.task_name)
 
-    #define network architecture
-    net_arch ={
-            "input": [
-                (nn.Linear, 16),
-                (nn.Linear, 16)
-            ],
-            "propagate": [
-                (NerveNetConv, 16),
-                (NerveNetConv, 16),
-                (NerveNetConv, 16),
-                (NerveNetConv, 16)
-            ],
-            "policy": [
-                (nn.Linear, 64),
-                (nn.Linear, 64)
-            ],
-            "value": [
-                (nn.Linear, 64),
-                (nn.Linear, 64)
-            ]
-        }
+    # define network architecture
+    net_arch = {
+        "input": [
+            (nn.Linear, 64),
+            (nn.Linear, 64)
+        ],
+        "propagate": [
+            (NerveNetConv, 64),
+            (NerveNetConv, 64),
+            (NerveNetConv, 64),
+            (NerveNetConv, 64)
+        ],
+        "policy": [
+            (nn.Linear, 64),
+            (nn.Linear, 64)
+        ],
+        "value": [
+            (nn.Linear, 64),
+            (nn.Linear, 64)
+        ]
+    }
 
     # Prepare tensorboard logging
     log_name = '{}_{}_{}'.format(args.experiment_name, args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
@@ -82,7 +82,8 @@ def train(args):
     if args.policy == "GnnPolicy":
         policy_kwargs["mlp_extractor_kwargs"] = {
             "task_name": args.task_name,
-            'device': args.device
+            'device': args.device,
+            'gnn_for_values': args.gnn_for_values
         }
         policy_kwargs['net_arch'] = net_arch
 
@@ -124,6 +125,8 @@ def parse_arguments():
     p.add_argument('--device', help='Device (cpu, cuda, ...) on which the code should be run.'
                                     'Setting it to auto, the code will be run on the GPU if possible.', default="auto")
     p.add_argument('--net_arch', help='The specification of the policy and value networks', type=json.loads)
+    p.add_argument('--gnn_for_values', type=bool, help='whether or not to use the GNN for the value function',
+                   default=False)
     p.add_argument('--activation_fn', help='Activation function of the policy and value networks',
                    choices=["Tanh", "ReLU"])
     p.add_argument('--learning_rate', help='Learning rate value for the optimizers.', type=float, default=3.0e-4)
