@@ -66,7 +66,7 @@ class LoggingCallback(BaseCallback):
         """
         This event is triggered before updating the policy.
         """
-        self.rolling_outfile.write(str(np.array(self.saved_reward).mean() * 1000) + '\n')
+        self.rolling_outfile.write(str(np.array(self.rolling_reward).mean() * 1000) + '\n')
         self.rolling_outfile.flush()
 
         mean_reward = np.array(self.saved_reward).mean() * 1000

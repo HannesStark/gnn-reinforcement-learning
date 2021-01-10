@@ -41,7 +41,6 @@ def train(args):
     # define network architecture
     net_arch = {
         "input": [
-            (nn.Linear, 64),
             (nn.Linear, 64)
         ],
         "propagate": [
@@ -51,7 +50,6 @@ def train(args):
             (NerveNetConv, 64)
         ],
         "policy": [
-            (nn.Linear, 64),
             (nn.Linear, 64)
         ],
         "value": [

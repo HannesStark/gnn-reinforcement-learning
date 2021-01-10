@@ -8,14 +8,14 @@ import numpy as np
 sns.set_theme()
 
 input_paths = [
-    'Mlp_AntBulletEnv-v0_09-01_10-29-48',
-    'Mlp_HopperBulletEnv-v0_09-01_10-30-04'
+    'Mlp_AntBulletEnv-v0_09-01_11-23-30',
+    'lr3e-4_AntBulletEnv-v0_09-01_15-39-11'
 ]
 
 lists = []
 min_len = np.inf
 for path in input_paths:
-    with open(os.path.join('runs', path, 'results.txt')) as file:
+    with open(os.path.join('runs', path, 'rollout_mean.txt')) as file:
         lines = file.readlines()
         rewards = []
         for line in lines:
