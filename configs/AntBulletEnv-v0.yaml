@@ -1,4 +1,4 @@
-experiment_name: Mlp
+experiment_name: Mlp_split_architecture
 
 task_name: AntBulletEnv-v0
 alg: PPO

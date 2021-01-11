@@ -10,6 +10,7 @@ import pyaml
 import torch
 import yaml
 from stable_baselines3.common.utils import get_device
+from stable_baselines3.ppo import MlpPolicy
 from torch import nn
 
 import pybullet_envs  # register pybullet envs from bullet3
@@ -53,6 +54,8 @@ def train(args):
             (nn.Linear, 64)
         ]
     }
+    # for mlppolicy
+    net_arch = [64, {"pi": [64], "vf": [64]}]
 
     # Prepare tensorboard logging
     log_name = '{}_{}_{}'.format(args.experiment_name, args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
@@ -70,6 +73,7 @@ def train(args):
     alg_class = algorithms[args.alg]
     alg_kwargs = dict()
     policy_kwargs = dict()
+    policy_kwargs['net_arch'] = net_arch
     if args.activation_fn is not None:
         policy_kwargs["activation_fn"] = activation_functions[args.activation_fn]
     # policy_kwargs['device'] = args.device if args.device is not None else get_device('auto')
@@ -80,7 +84,6 @@ def train(args):
             'gnn_for_values': args.gnn_for_values,
             'embedding_option': embedding_option[args.embedding_option]
         }
-        policy_kwargs['net_arch'] = net_arch
 
     model = alg_class(args.policy,
                       env,
@@ -103,7 +106,7 @@ def train(args):
 
 def parse_arguments():
     p = argparse.ArgumentParser()
-    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/GNN_UNIFIED_AntBulletEnv-v0.yaml')
+    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/AntBulletEnv-v0.yaml')
     p.add_argument('--task_name', help='The name of the environment to use')
     p.add_argument('--alg', help='The algorithm to be used for training', choices=["A2C", "PPO"])
     p.add_argument('--policy', help='The type of model to use.', choices=["GnnPolicy", "MlpPolicy"])
