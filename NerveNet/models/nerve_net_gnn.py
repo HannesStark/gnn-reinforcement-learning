@@ -11,6 +11,7 @@ from torch_geometric.nn import GCNConv, MessagePassing
 
 from stable_baselines3.common.utils import get_device
 from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
+from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption
 from NerveNet.graph_util.observation_mapper import get_update_masks, observations_to_node_attributes, \
     relation_matrix_to_adjacency_matrix
 from NerveNet.models.nerve_net_conv import NerveNetConv
@@ -29,6 +30,7 @@ class NerveNetGNN(nn.Module):
                  net_arch: Dict[str, List[Tuple[nn.Module, int]]],
                  activation_fn: Type[nn.Module],
                  gnn_for_values=False,
+                 embedding_option= EmbeddingOption.SHARED,
                  device: Union[torch.device, str] = "auto",
                  task_name: str = None,
                  xml_name: str = None,
@@ -85,9 +87,11 @@ class NerveNetGNN(nn.Module):
         self.device = get_device(device)
         self.gnn_for_values = gnn_for_values
 
+
         self.info = parse_mujoco_graph(task_name=self.task_name,
                                        xml_name=self.xml_name,
-                                       xml_assets_path=self.xml_assets_path)
+                                       xml_assets_path=self.xml_assets_path,
+                                       embedding_option=embedding_option)
 
         # Notes on edge attributes:
         # using one hot encoding leads to num_edge_features != 1

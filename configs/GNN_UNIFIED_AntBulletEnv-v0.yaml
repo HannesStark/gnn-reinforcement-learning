@@ -1,11 +1,12 @@
-experiment_name: 'GNNlr1e-3'
+experiment_name: 'GNNUnified'
 
-task_name: HalfCheetahBulletEnv-v0
+task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
 
 device: cpu
 
+embedding_option: unified
 learning_rate: 4.0e-3
 total_timesteps: 1000000
 n_steps: 1024

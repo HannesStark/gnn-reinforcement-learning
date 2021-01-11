@@ -8,14 +8,14 @@ import numpy as np
 sns.set_theme()
 
 input_paths = [
-    'Mlp_AntBulletEnv-v0_09-01_11-23-30',
-    'lr3e-4_AntBulletEnv-v0_09-01_15-39-11'
+    'Mlp_AntBulletEnv-v0_10-01_09-58-23',
+    'GNNlr1e-3_AntBulletEnv-v0_10-01_11-19-22'
 ]
 
 lists = []
 min_len = np.inf
 for path in input_paths:
-    with open(os.path.join('runs', path, 'rollout_mean.txt')) as file:
+    with open(os.path.join('runs', path, 'rolling_mean.txt')) as file:
         lines = file.readlines()
         rewards = []
         for line in lines:
@@ -32,9 +32,9 @@ array = np.array(arrays).T
 df = pd.DataFrame(array, columns=range(len(arrays)))
 
 sns.lineplot(data=df)
-plt.xlabel('number of steps')
+plt.xlabel('1000 number of steps')
 plt.ylabel('mean reward in rollout')
-plt.legend(labels=['reacher', 'hopper'])
+plt.legend(labels=['MLP', 'NerveNet-MLP'])
 # plt.savefig('figure.png')
 plt.show()
 plt.clf()

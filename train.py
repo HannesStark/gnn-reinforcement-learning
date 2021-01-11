@@ -14,6 +14,7 @@ from torch import nn
 
 import pybullet_envs  # register pybullet envs from bullet3
 
+from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption
 from NerveNet.models.nerve_net_conv import NerveNetConv
 from NerveNet.policies import register_policies
 
@@ -24,8 +25,8 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from util import LoggingCallback
 
 algorithms = dict(A2C=A2C, PPO=PPO)
-
 activation_functions = dict(Tanh=nn.Tanh, ReLU=nn.ReLU)
+embedding_option = dict(shared=EmbeddingOption.SHARED, unified=EmbeddingOption.UNIFIED)
 
 
 def train(args):
@@ -44,16 +45,11 @@ def train(args):
             (nn.Linear, 64)
         ],
         "propagate": [
-            (NerveNetConv, 64),
-            (NerveNetConv, 64),
-            (NerveNetConv, 64),
-            (NerveNetConv, 64)
         ],
         "policy": [
             (nn.Linear, 64)
         ],
         "value": [
-            (nn.Linear, 64),
             (nn.Linear, 64)
         ]
     }
@@ -81,7 +77,8 @@ def train(args):
         policy_kwargs["mlp_extractor_kwargs"] = {
             "task_name": args.task_name,
             'device': args.device,
-            'gnn_for_values': args.gnn_for_values
+            'gnn_for_values': args.gnn_for_values,
+            'embedding_option': embedding_option[args.embedding_option]
         }
         policy_kwargs['net_arch'] = net_arch
 
@@ -106,7 +103,7 @@ def train(args):
 
 def parse_arguments():
     p = argparse.ArgumentParser()
-    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/GNN_AntBulletEnv-v0_lr3e-4.yaml')
+    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/GNN_AntBulletEnv-v0.yaml')
     p.add_argument('--task_name', help='The name of the environment to use')
     p.add_argument('--alg', help='The algorithm to be used for training', choices=["A2C", "PPO"])
     p.add_argument('--policy', help='The type of model to use.', choices=["GnnPolicy", "MlpPolicy"])
@@ -127,6 +124,8 @@ def parse_arguments():
                    default=False)
     p.add_argument('--activation_fn', help='Activation function of the policy and value networks',
                    choices=["Tanh", "ReLU"])
+    p.add_argument('--embedding_option', help='Embedding Option for mujoco parser',
+                   choices=["shared", "unified"], default='shared')
     p.add_argument('--learning_rate', help='Learning rate value for the optimizers.', type=float, default=3.0e-4)
     p.add_argument('--job_dir', help='GCS location to export models')
     p.add_argument('--experiment_name', help='name to append to the tensorboard logs directory', default='')
