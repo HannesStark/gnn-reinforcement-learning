@@ -194,7 +194,8 @@ class NerveNetGNN(nn.Module):
         self.debug = nn.Sequential(
             nn.Linear(self.last_layer_dim_input, 64),
             activation_fn(),
-            nn.Linear(64, 64)
+            nn.Linear(64, 64),
+            activation_fn()
         )
 
     def forward(self, observations: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -210,7 +211,7 @@ class NerveNetGNN(nn.Module):
                                                        self.info["num_nodes"],
                                                        self.info["num_node_features"]
                                                        ).to(self.device)
-        res = self.debug(sp_embedding)
+
         # dense embedding matrix
         embedding = torch.zeros(
             (*sp_embedding.shape[:-1], self.last_layer_dim_input)).to(self.device)
@@ -229,13 +230,10 @@ class NerveNetGNN(nn.Module):
 
         embedding = self.flatten(embedding).to(self.device)
 
-        #if self.gnn_for_values:
-        #    latent_vf = self.value_net(embedding)
-        #else:
-        #    latent_vf = self.value_net(pre_message_passing)
+        if self.gnn_for_values:
+            latent_vf = self.value_net(embedding)
+        else:
+            latent_vf = self.value_net(pre_message_passing)
 
-        latent_vf = res
-
-        #latent_pi = self.policy_net(embedding)
-        latent_pi = res
+        latent_pi = self.policy_net(embedding)
         return latent_pi, latent_vf
