@@ -30,7 +30,7 @@ class NerveNetGNN(nn.Module):
                  net_arch: Dict[str, List[Tuple[nn.Module, int]]],
                  activation_fn: Type[nn.Module],
                  gnn_for_values=False,
-                 embedding_option= EmbeddingOption.SHARED,
+                 embedding_option=EmbeddingOption.SHARED,
                  device: Union[torch.device, str] = "auto",
                  task_name: str = None,
                  xml_name: str = None,
@@ -86,7 +86,6 @@ class NerveNetGNN(nn.Module):
         self.xml_assets_path = xml_assets_path
         self.device = get_device(device)
         self.gnn_for_values = gnn_for_values
-
 
         self.info = parse_mujoco_graph(task_name=self.task_name,
                                        xml_name=self.xml_name,
@@ -192,7 +191,11 @@ class NerveNetGNN(nn.Module):
         self.flatten = nn.Flatten()
         self.policy_net = nn.Sequential(*policy_net).to(self.device)
         self.value_net = nn.Sequential(*value_net).to(self.device)
-
+        self.debug = nn.Sequential(
+            nn.Linear(self.last_layer_dim_input, 64),
+            activation_fn(),
+            nn.Linear(64, 64)
+        )
 
     def forward(self, observations: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -207,7 +210,7 @@ class NerveNetGNN(nn.Module):
                                                        self.info["num_nodes"],
                                                        self.info["num_node_features"]
                                                        ).to(self.device)
-
+        res = self.debug(sp_embedding)
         # dense embedding matrix
         embedding = torch.zeros(
             (*sp_embedding.shape[:-1], self.last_layer_dim_input)).to(self.device)
@@ -220,16 +223,19 @@ class NerveNetGNN(nn.Module):
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
                 embedding = layer(embedding, self.edge_index,
-                                      self.update_masks).to(self.device)
+                                  self.update_masks).to(self.device)
             else:
                 embedding = layer(embedding).to(self.device)
 
         embedding = self.flatten(embedding).to(self.device)
 
-        if self.gnn_for_values:
-            latent_vf = self.value_net(embedding)
-        else:
-            latent_vf = self.value_net(pre_message_passing)
+        #if self.gnn_for_values:
+        #    latent_vf = self.value_net(embedding)
+        #else:
+        #    latent_vf = self.value_net(pre_message_passing)
 
-        latent_pi = self.policy_net(embedding)
+        latent_vf = res
+
+        #latent_pi = self.policy_net(embedding)
+        latent_pi = res
         return latent_pi, latent_vf
