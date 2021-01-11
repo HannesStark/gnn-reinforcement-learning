@@ -15,7 +15,7 @@ input_paths = [
 lists = []
 min_len = np.inf
 for path in input_paths:
-    with open(os.path.join('runs', path, 'rolling_mean.txt')) as file:
+    with open(os.path.join('runs', path, 'rollout_mean.txt')) as file:
         lines = file.readlines()
         rewards = []
         for line in lines:
@@ -26,6 +26,11 @@ for path in input_paths:
 arrays = []
 for reward_list in lists:
     arrays.append(np.array(reward_list)[:min_len])
+
+# take the mean
+window_size=60
+for i, array in enumerate(arrays):
+    arrays[i] = np.convolve(array,np.ones(window_size)/window_size,mode='valid')
 
 plt.rcParams['figure.figsize'] = [10, 8]
 array = np.array(arrays).T

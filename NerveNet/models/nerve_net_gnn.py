@@ -214,20 +214,21 @@ class NerveNetGNN(nn.Module):
         for group_name, (update_mask, obs_size) in self.update_masks.items():
             embedding[:, update_mask, :] = self.shared_input_nets[group_name](sp_embedding[:, update_mask, 0:obs_size])
 
+        pre_message_passing = self.flatten(embedding).to(self.device)
+
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
-                gnn_embedding = layer(embedding, self.edge_index,
+                embedding = layer(embedding, self.edge_index,
                                       self.update_masks).to(self.device)
             else:
-                gnn_embedding = layer(embedding).to(self.device)
+                embedding = layer(embedding).to(self.device)
 
-        gnn_embedding = self.flatten(gnn_embedding).to(self.device)
         embedding = self.flatten(embedding).to(self.device)
 
         if self.gnn_for_values:
-            latent_vf = self.value_net(gnn_embedding)
-        else:
             latent_vf = self.value_net(embedding)
+        else:
+            latent_vf = self.value_net(pre_message_passing)
 
-        latent_pi = self.policy_net(gnn_embedding)
+        latent_pi = self.policy_net(embedding)
         return latent_pi, latent_vf

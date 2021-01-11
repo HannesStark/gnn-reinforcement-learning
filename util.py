@@ -32,7 +32,7 @@ class LoggingCallback(BaseCallback):
         # self.parent = None  # type: Optional[BaseCallback]
         self.saved_reward = []
         self.rolling_reward = []
-        self.every_step_outfile = open(os.path.join(logpath, 'rolling_mean_every_step.txt'), 'w+')
+        self.every_step_outfile = open(os.path.join(logpath, 'rollout_mean_every_step.txt'), 'w+')
         self.rolling_outfile = open(os.path.join(logpath, 'rolling_mean.txt'), 'w+')
         self.outfile = open(os.path.join(logpath, 'rollout_mean.txt'), 'w+')
 
@@ -61,7 +61,7 @@ class LoggingCallback(BaseCallback):
         """
         self.saved_reward.append(self.locals['rewards'])
         self.rolling_reward.append(self.locals['rewards'])
-        self.every_step_outfile.write(str(np.array(self.rolling_reward).mean() * 1000) + '\n')
+        self.every_step_outfile.write(str(self.locals['rewards'] * 1000) + '\n')
         return True
 
     def _on_rollout_end(self) -> None:
