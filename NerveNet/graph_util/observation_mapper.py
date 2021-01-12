@@ -22,6 +22,10 @@ def relation_matrix_to_adjacency_matrix(relation_matrix: List[List],
 
 def get_static_node_attributes(static_input_mapping: dict,
                                num_nodes: int):
+    if static_input_mapping == {}:
+        return np.zeros((num_nodes, 0), dtype=np.float32), [np.array(mask, np.int64)
+                                                            for mask in np.empty((num_nodes, 0)).tolist()]
+
     input_attributes = [list(zip(v.keys(), [len(l) for l in v.values()]))
                         for k, v in static_input_mapping.items()]
     input_attributes = list(set(flatten(input_attributes)))
@@ -65,8 +69,10 @@ def observations_to_node_attributes(observations: torch.Tensor,
         attributes = torch.zeros((batch_size,
                                   num_nodes,
                                   num_node_features), dtype=torch.float32, device=observations.device)
-        attributes[:, :, -max_static_feature_dim:] = torch.from_numpy(
-            static_node_attr).to(observations.device)
+
+        if max_static_feature_dim != 0:
+            attributes[:, :, -max_static_feature_dim:] = torch.from_numpy(
+                static_node_attr).to(observations.device)
 
         for group_name, (node_mask, attr_mask) in update_masks.items():
             obs_attr_mask = attr_mask[attr_mask < max_obs_feature_dim]

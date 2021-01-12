@@ -91,7 +91,7 @@ class NerveNetGNN(nn.Module):
                                        xml_name=self.xml_name,
                                        xml_assets_path=self.xml_assets_path,
                                        embedding_option=embedding_option)
-
+        self.info["static_input_mapping"] = {}
         # Notes on edge attributes:
         # using one hot encoding leads to num_edge_features != 1
         # officially this is supported for graph data types.
@@ -144,6 +144,11 @@ class NerveNetGNN(nn.Module):
 
             self.shared_input_nets[group_name] = nn.Sequential(
                 *shared_input_layers).to(self.device)
+
+        # max_static_feature_dim = self.static_node_attr.shape[1]
+        # max_obs_feature_dim = max(
+        #     [len(l) for l in self.info["obs_input_mapping"].values()])
+        # last_layer_dim_input = max_obs_feature_dim + max_static_feature_dim
 
         self.last_layer_dim_input = last_layer_dim_input
         last_layer_dim_shared = last_layer_dim_input
@@ -233,6 +238,8 @@ class NerveNetGNN(nn.Module):
             if len(attribute_mask) > 0:
                 embedding[:, node_mask, :] = self.shared_input_nets[group_name](
                     sp_embedding[:, node_mask][:, :, attribute_mask])
+
+        # embedding = sp_embedding
 
         pre_message_passing = self.flatten(embedding).to(self.device)
 
