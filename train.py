@@ -46,6 +46,10 @@ def train(args):
             (nn.Linear, 64)
         ],
         "propagate": [
+            (NerveNetConv, 64),
+            (NerveNetConv, 64),
+            (NerveNetConv, 64),
+            (NerveNetConv, 64)
         ],
         "policy": [
             (nn.Linear, 64)
@@ -55,7 +59,7 @@ def train(args):
         ]
     }
     # for mlppolicy
-    net_arch = [64, {"pi": [64], "vf": [64]}]
+    #net_arch = [64, {"pi": [64], "vf": [64]}]
 
     # Prepare tensorboard logging
     log_name = '{}_{}_{}'.format(args.experiment_name, args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
@@ -106,7 +110,7 @@ def train(args):
 
 def parse_arguments():
     p = argparse.ArgumentParser()
-    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/AntBulletEnv-v0.yaml')
+    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/GNN_HalfCheetahBulletEnv-v0.yaml')
     p.add_argument('--task_name', help='The name of the environment to use')
     p.add_argument('--alg', help='The algorithm to be used for training', choices=["A2C", "PPO"])
     p.add_argument('--policy', help='The type of model to use.', choices=["GnnPolicy", "MlpPolicy"])

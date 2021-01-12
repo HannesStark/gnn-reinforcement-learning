@@ -1,6 +1,6 @@
 experiment_name: 'GNN'
 
-task_name: AntBulletEnv-v0
+task_name: InvertedDoublePendulumBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
 

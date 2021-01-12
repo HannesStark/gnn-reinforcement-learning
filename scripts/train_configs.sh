@@ -16,4 +16,8 @@
 # This scripts performs local training for a PyTorch model.
 echo "Training local ML model"
 
-python train.py --config=configs/GNN_AntBulletEnv-v0.yaml
+python train.py --config=configs/GNN_HopperBulletEnv-v0.yaml
+python train.py --config=configs/GNN_InvertedDoublePendulumBulletEnv-v0.yaml
+python train.py --config=configs/GNN_InvertedPendulumBulletEnv-v0.yaml
+python train.py --config=configs/GNN_ReacherBulletEnv-v0.yaml
+python train.py --config=configs/GNN_Walker2DBulletEnv-v0.yaml

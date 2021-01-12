@@ -1,4 +1,4 @@
-experiment_name: 'GNNlr1e-3'
+experiment_name: 'GNN'
 
 task_name: HalfCheetahBulletEnv-v0
 alg: PPO
