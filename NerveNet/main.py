@@ -27,7 +27,7 @@ basepath = Path(os.getcwd())
 
 graph_logs_dir = basepath / "graph_logs_new"
 
-task_name = 'AntBulletEnv-v0'
+task_name = 'HalfCheetahBulletEnv-v0'
 nervenet_assets_dir = Path(os.getcwd()).parent / \
     "NerveNet" / "environments" / "assets"
 
@@ -48,7 +48,6 @@ model = A2C("GnnPolicy",
                 'net_arch':  {
                     "input": [
                         (nn.Linear, 12),
-                        (nn.Linear, 16)
                     ],
                     "propagate": [
                         (NerveNetConv, 12),

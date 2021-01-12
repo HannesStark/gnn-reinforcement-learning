@@ -20,7 +20,7 @@ from NerveNet.graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_
 from NerveNet.graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
 from NerveNet.graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, SUPPORTED_JOINT_TYPES,\
     SUPPORTED_JOINT_ATTRIBUTES, SUPPORTED_BODY_ATTRIBUTES, EDGE_TYPES, SHARED_EMBEDDING_GROUPS, \
-    ControllerOption, RootRelationOption, EmbeddingOption
+    CUSTOM_SHARED_EMBEDDING_GROUPS, ControllerOption, RootRelationOption, EmbeddingOption
 
 
 __all__ = ["parse_mujoco_graph"]
@@ -36,7 +36,7 @@ def parse_mujoco_graph(task_name: str = None,
                        controller_option: ControllerOption = ControllerOption.SHARED,
                        embedding_option: EmbeddingOption = EmbeddingOption.SHARED,
                        foot_list: List[str] = [],
-                       absorb_root_joints: bool = False):
+                       absorb_root_joints: bool = True):
     '''
     TODO: add documentation
 
@@ -129,13 +129,11 @@ def parse_mujoco_graph(task_name: str = None,
         controller_option=controller_option)
 
     obs_input_mapping, static_input_mapping, input_type_dict = __get_input_mapping(
+        task_name,
         tree,
         embedding_option=embedding_option)
 
     num_nodes = len(obs_input_mapping)
-    num_node_features = max([len(lst1) + len(lst1)
-                             for lst1 in obs_input_mapping.values()
-                             for lst2 in static_input_mapping.values()])
 
     return dict(tree=tree,
                 relation_matrix=relation_matrix,
@@ -145,8 +143,7 @@ def parse_mujoco_graph(task_name: str = None,
                 obs_input_mapping=obs_input_mapping,
                 static_input_mapping=static_input_mapping,
                 input_type_dict=input_type_dict,
-                num_nodes=num_nodes,
-                num_node_features=num_node_features)
+                num_nodes=num_nodes)
 
 
 def __extract_tree(xml_soup: BeautifulSoup,
@@ -189,7 +186,10 @@ def __extract_tree(xml_soup: BeautifulSoup,
 
     if absorb_root_joints:
         # absorb joints that are directly attached to the root node into the root node
-        # not realy sure why we do this, but that's how the original NerveNet Implementation does it...
+        # we need to absorb the root joints because they are usually "dead" joints
+        # meaning, they do not produce any observations. If we keep them in anyways,
+        # we'd expect to get a bigger observation vector than we actually do.
+
         tree[0]["attached_joint_info"] = [node
                                           for node in tree
                                           if node["name"] in tree[0]["attached_joint_name"]]
@@ -437,7 +437,7 @@ def __get_output_mapping(tree: List[dict], controller_option: ControllerOption) 
     return output_type_dict, output_list
 
 
-def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption) -> Tuple[dict, dict, dict]:
+def __get_input_mapping(task_name: str, tree: List[dict], embedding_option: EmbeddingOption) -> Tuple[dict, dict, dict]:
     '''
     Parameters:
         "tree":
@@ -519,12 +519,20 @@ def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption) -> 
                                             if attr_name in attrs.keys()}
 
     if embedding_option == EmbeddingOption.SHARED:
-        for node_type in SHARED_EMBEDDING_GROUPS:
-            input_type_dict[node_type] = [node["id"]
-                                          for node in tree
-                                          if node_type in node["raw_name"].lower()
-                                          # make sure we don't already have this id in another group
-                                          and node["id"] not in [i for l in input_type_dict.values() for i in l]]
+        if task_name in CUSTOM_SHARED_EMBEDDING_GROUPS.keys():
+            for node_type, node_names in CUSTOM_SHARED_EMBEDDING_GROUPS[task_name].items():
+                input_type_dict[node_type] = [node["id"]
+                                              for node in tree
+                                              if node["name"] in node_names
+                                              # make sure we don't already have this id in another group
+                                              and node["id"] not in [i for l in input_type_dict.values() for i in l]]
+        else:
+            for node_type in SHARED_EMBEDDING_GROUPS:
+                input_type_dict[node_type] = [node["id"]
+                                              for node in tree
+                                              if node_type in node["raw_name"].lower()
+                                              # make sure we don't already have this id in another group
+                                              and node["id"] not in [i for l in input_type_dict.values() for i in l]]
 
         # drop empty groups / only keep non-empty groups
         input_type_dict = {group_name: group_nodes
@@ -548,6 +556,10 @@ def __get_input_mapping(tree: List[dict], embedding_option: EmbeddingOption) -> 
         tree), "Every node must have an observation input mapping!"
     assert len(static_input_mapping) == len(
         tree) - 1, "Every node must have a static input mapping, except the root node!"
+
+    for nodes in input_type_dict.values():
+        assert all([len(obs_input_mapping[nodes[0]]) == len(obs_input_mapping[node])
+                    for node in nodes]), "Every node in a group must have the same number of observations"
 
     return obs_input_mapping, static_input_mapping, input_type_dict
 

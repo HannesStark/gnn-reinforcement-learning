@@ -49,7 +49,33 @@ XML_DICT = {"Walker2DBulletEnv-v0": "walker2d.xml",
             "HumanoidFlagrunBulletEnv-v0": "humanoid_symmetric.xml",
             "HumanoidFlagrunHarderBulletEnv-v0": "humanoid_symmetric.xml"}
 
-
+CUSTOM_SHARED_EMBEDDING_GROUPS = {
+    # "Walker2DBulletEnv-v0":{},
+    "HalfCheetahBulletEnv-v0": {
+        "root_mujocoroot": ["root_mujocoroot"],
+        "torso": ["body_torso"],
+        "thigh_bodies": ["body_bthigh", "body_fthigh"],
+        "shin_bodies": ["body_bshin", "body_fshin"],
+        "foot_bodies": ["body_bfoot", "body_ffoot"],
+        "thigh_joints": ["joint_bthigh", "joint_fthigh"],
+        "shin_joints": ["joint_bshin", "joint_fshin"],
+        "foot_joints": ["joint_bfoot", "joint_ffoot"],
+    },
+    # "AntBulletEnv-v0": {},
+    "HopperBulletEnv-v0": {
+        "root_mujocoroot": ["root_mujocoroot"],
+        "torso": ["body_torso"],
+        "leg": ["body_leg"],
+        "foot": ["body_foot"],
+        "thigh": ["body_thigh"],
+        "thigh_joint": ["joint_thigh_joint"],
+        "leg_joint": ["joint_leg_joint"],
+        "foot_joint": ["joint_foot_joint"],
+    },
+    # "HumanoidBulletEnv-v0": {},
+    # "HumanoidFlagrunBulletEnv-v0":{},
+    # "HumanoidFlagrunHarderBulletEnv-v0": {}}
+}
 SHARED_EMBEDDING_GROUPS = ["root_mujocoroot",
                            "aux",
                            "cart",

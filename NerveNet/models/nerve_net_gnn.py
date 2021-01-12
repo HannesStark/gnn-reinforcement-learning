@@ -13,7 +13,7 @@ from stable_baselines3.common.utils import get_device
 from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
 from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption
 from NerveNet.graph_util.observation_mapper import get_update_masks, observations_to_node_attributes, \
-    relation_matrix_to_adjacency_matrix
+    relation_matrix_to_adjacency_matrix, get_static_node_attributes
 from NerveNet.models.nerve_net_conv import NerveNetConv
 
 
@@ -103,15 +103,16 @@ class NerveNetGNN(nn.Module):
         # Ergo, we should not use them!
         self.edge_index, self.edge_attr = relation_matrix_to_adjacency_matrix(
             self.info["relation_matrix"],
-            one_hot_attributes=True,
             self_loop=True
         )
         self.edge_index = self.edge_index.to(self.device)
         self.edge_attr = self.edge_attr.to(self.device)
-
-        self.update_masks = get_update_masks(self.info["obs_input_mapping"],
-                                             self.info["static_input_mapping"],
-                                             self.info["input_type_dict"])
+        self.static_node_attr, self.static_node_attr_mask = get_static_node_attributes(self.info["static_input_mapping"],
+                                                                                       self.info["num_nodes"])
+        self.update_masks, self.observation_mask = get_update_masks(self.info["obs_input_mapping"],
+                                                                    self.static_node_attr_mask,
+                                                                    self.static_node_attr.shape,
+                                                                    self.info["input_type_dict"])
 
         self.shared_input_nets = {}
         shared_net, policy_net, value_net = [], [], []
@@ -128,14 +129,18 @@ class NerveNetGNN(nn.Module):
         # from here on we build the network
         # first we build the input model, where each group of nodes gets
         # its own instance of the input model
-        for group_name, (_, node_obs_size) in self.update_masks.items():
+        for group_name, (_, attribute_mask) in self.update_masks.items():
             shared_input_layers = []
-            last_layer_dim_input = node_obs_size
-            for layer_class, layer_size in net_arch["input"]:
-                shared_input_layers.append(layer_class(
-                    last_layer_dim_input, layer_size))
-                shared_input_layers.append(activation_fn())
-                last_layer_dim_input = layer_size
+            last_layer_dim_input = len(attribute_mask)
+            if last_layer_dim_input > 0:
+                for layer_class, layer_size in net_arch["input"]:
+                    shared_input_layers.append(layer_class(
+                        last_layer_dim_input, layer_size))
+                    shared_input_layers.append(activation_fn())
+                    last_layer_dim_input = layer_size
+            else:
+                shared_input_layers.append(nn.Identity())
+                last_layer_dim_input = net_arch["input"][-1][1]
 
             self.shared_input_nets[group_name] = nn.Sequential(
                 *shared_input_layers).to(self.device)
@@ -169,15 +174,21 @@ class NerveNetGNN(nn.Module):
         # which means last_layer_dim_shared is the number of
         # dimensions we have for every single node
         last_layer_dim_pi = self.info["num_nodes"] * last_layer_dim_shared
-        last_layer_dim_vf = self.info["num_nodes"] * last_layer_dim_shared
+        if self.gnn_for_values:
+            last_layer_dim_vf = self.info["num_nodes"] * last_layer_dim_shared
+        else:
+            last_layer_dim_vf = self.info["num_nodes"] * \
+                self.last_layer_dim_input
 
         for layer_class, layer_size in net_arch["policy"]:
-            policy_net.append(layer_class(last_layer_dim_pi, layer_size).to(self.device))
+            policy_net.append(layer_class(
+                last_layer_dim_pi, layer_size).to(self.device))
             policy_net.append(activation_fn().to(self.device))
             last_layer_dim_pi = layer_size
 
         for layer_class, layer_size in net_arch["value"]:
-            value_net.append(layer_class(last_layer_dim_vf, layer_size).to(self.device))
+            value_net.append(layer_class(
+                last_layer_dim_vf, layer_size).to(self.device))
             value_net.append(activation_fn().to(self.device))
             last_layer_dim_vf = layer_size
 
@@ -207,17 +218,21 @@ class NerveNetGNN(nn.Module):
         # "sparse" embedding matrix
         sp_embedding = observations_to_node_attributes(observations,
                                                        self.info["obs_input_mapping"],
-                                                       self.info["static_input_mapping"],
-                                                       self.info["num_nodes"],
-                                                       self.info["num_node_features"]
+                                                       self.observation_mask,
+                                                       self.update_masks,
+                                                       self.static_node_attr,
+                                                       self.static_node_attr_mask,
+                                                       self.info["num_nodes"]
                                                        ).to(self.device)
 
         # dense embedding matrix
         embedding = torch.zeros(
             (*sp_embedding.shape[:-1], self.last_layer_dim_input)).to(self.device)
 
-        for group_name, (update_mask, obs_size) in self.update_masks.items():
-            embedding[:, update_mask, :] = self.shared_input_nets[group_name](sp_embedding[:, update_mask, 0:obs_size])
+        for group_name, (node_mask, attribute_mask) in self.update_masks.items():
+            if len(attribute_mask) > 0:
+                embedding[:, node_mask, :] = self.shared_input_nets[group_name](
+                    sp_embedding[:, node_mask][:, :, attribute_mask])
 
         pre_message_passing = self.flatten(embedding).to(self.device)
 
