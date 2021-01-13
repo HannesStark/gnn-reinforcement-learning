@@ -37,7 +37,7 @@ env = gym.make(task_name)
 log_name = '{}_{}'.format(task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
 checkpoint_callback = CheckpointCallback(save_freq=50, save_path='runs/' + log_name,
                                          name_prefix='rl_model')
-model = A2C("GnnPolicy",
+model = PPO("GnnPolicy",
             env,
             verbose=1,
             policy_kwargs={
@@ -47,21 +47,20 @@ model = A2C("GnnPolicy",
                 },
                 'net_arch':  {
                     "input": [
-                        (nn.Linear, 12),
-                        (nn.Linear, 16)
+                        (nn.Linear, 6),
                     ],
                     "propagate": [
                         (NerveNetConv, 12),
-                        (NerveNetConv, 12),
-                        (NerveNetConv, 12)
+                        # (NerveNetConv, 12),
+                        # (NerveNetConv, 12)
                     ],
                     "policy": [
-                        (nn.Linear, 16),
-                        (nn.Linear, 16)
+                        (nn.Linear, 64),
+                        (nn.Linear, 64)
                     ],
                     "value": [
-                        (nn.Linear, 16),
-                        (nn.Linear, 16)
+                        (nn.Linear, 64),
+                        (nn.Linear, 64)
                     ]
                 },
                 "activation_fn":  nn.Tanh,
