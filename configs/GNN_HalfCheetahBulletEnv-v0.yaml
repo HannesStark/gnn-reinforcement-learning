@@ -1,9 +1,9 @@
-experiment_name: 'GNN_Prop16_16_16_P16_V16_N1024_B64_lr3e-4'
+experiment_name: 'GNN_Prop8_8_8_P16_V16_N1024_B64_lr3e-4'
 task_name: HalfCheetahBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
 
-device: cuda
+device: cpu
 
 learning_rate: 3.0e-4
 total_timesteps: 1000000
