@@ -8,17 +8,17 @@ import numpy as np
 sns.set_theme()
 
 input_paths = [
-    'Mlp_AntBulletEnv-v0_10-01_09-58-23'
+    'Mlp_split_architecture_AntBulletEnv-v0_13-01_08-02-20'
 ]
 
 lists = []
 min_len = np.inf
 for path in input_paths:
-    with open(os.path.join('runs', path, 'rollout_mean.txt')) as file:
+    with open(os.path.join('runs', path, 'rollout_mean_every_step.txt')) as file:
         lines = file.readlines()
         rewards = []
         for line in lines:
-            rewards.append(float(line))
+            rewards.append(float(line.strip('[').strip(']\n')))
         if len(rewards) < min_len:
             min_len = len(rewards)
         lists.append(rewards)
@@ -27,7 +27,7 @@ for reward_list in lists:
     arrays.append(np.array(reward_list)[:min_len])
 
 # take the mean
-window_size=100
+window_size= 10000
 for i, array in enumerate(arrays):
     arrays[i] = np.convolve(array,np.ones(window_size)/window_size,mode='valid')
 

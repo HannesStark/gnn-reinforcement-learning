@@ -48,10 +48,9 @@ def train(args):
                 (nn.Linear, 8)
             ],
             "propagate": [
-                (NerveNetConv, 64),
-                (NerveNetConv, 64),
-                (NerveNetConv, 64),
-                (NerveNetConv, 64),
+                (NerveNetConv, 16),
+                (NerveNetConv, 16),
+                (NerveNetConv, 16),
             ],
             "policy": [
                 (nn.Linear, 16),

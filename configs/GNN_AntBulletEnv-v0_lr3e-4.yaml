@@ -1,13 +1,13 @@
-experiment_name: 'GNN_Prop16_B512_lr3e-4'
+experiment_name: 'GNN_Prop8_8_8_P16_V16_N512_B64_lr3e-4'
 
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
 
-device: cuda
+device: cpu
 
 learning_rate: 3.0e-4
 total_timesteps: 1000000
-n_steps: 512
-batch_size: 512
+n_steps: 1024
+batch_size: 64
 activation_fn: Tanh
