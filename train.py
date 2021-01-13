@@ -48,10 +48,10 @@ def train(args):
                 (nn.Linear, 8)
             ],
             "propagate": [
-                (NerveNetConv, 12),
-                (NerveNetConv, 12),
-                (NerveNetConv, 12),
-                (NerveNetConv, 12),
+                (NerveNetConv, 64),
+                (NerveNetConv, 64),
+                (NerveNetConv, 64),
+                (NerveNetConv, 64),
             ],
             "policy": [
                 (nn.Linear, 16),
@@ -69,9 +69,10 @@ def train(args):
         args.experiment_name, args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
     run_dir = args.tensorboard_log + "/" + log_name
     os.mkdir(run_dir)
-    checkpoint_callback = CheckpointCallback(
-        save_freq=100000, save_path=run_dir, name_prefix='rl_model')
-    logging_callback = LoggingCallback(logpath=run_dir)
+    callbacks = []
+    # callbacks.append(CheckpointCallback(
+    #    save_freq=1000000, save_path=run_dir, name_prefix='rl_model'))
+    callbacks.append(LoggingCallback(logpath=run_dir))
     with open(os.path.join(run_dir, 'net_arch.txt'), 'w') as fp:
         fp.write(str(net_arch))
     train_args = copy.copy(args)
@@ -108,7 +109,7 @@ def train(args):
                       **alg_kwargs)
 
     model.learn(total_timesteps=args.total_timesteps,
-                callback=CallbackList([checkpoint_callback, logging_callback]),
+                callback=callbacks,
                 tb_log_name=log_name)
 
     model.save(os.path.join(args.tensorboard_log +
@@ -118,7 +119,7 @@ def train(args):
 def parse_arguments():
     p = argparse.ArgumentParser()
     p.add_argument('--config', type=argparse.FileType(mode='r'),
-                   default='configs/GNN_HalfCheetahBulletEnv-v0.yaml')
+                   default='configs/GNN_AntBulletEnv-v0.yaml')
     p.add_argument('--task_name', help='The name of the environment to use')
     p.add_argument(
         '--alg', help='The algorithm to be used for training', choices=["A2C", "PPO"])

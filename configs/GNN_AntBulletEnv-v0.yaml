@@ -1,4 +1,4 @@
-experiment_name: 'GNN_Prop12_12_12_12_P16_V16_N64_B64_lr3e-4_ReLU'
+experiment_name: 'GNN_Prop64_64_64_64_P16_V16_N1024_B64_lr3e-4_AntBulletEnv-v0_12-01_21-49-59'
 
 task_name: AntBulletEnv-v0
 alg: PPO
