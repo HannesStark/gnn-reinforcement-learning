@@ -8,8 +8,7 @@ import numpy as np
 sns.set_theme()
 
 input_paths = [
-    'Mlp_AntBulletEnv-v0_10-01_09-58-23',
-    'GNNlr1e-3_AntBulletEnv-v0_10-01_11-19-22'
+    'Mlp_AntBulletEnv-v0_10-01_09-58-23'
 ]
 
 lists = []
@@ -28,7 +27,7 @@ for reward_list in lists:
     arrays.append(np.array(reward_list)[:min_len])
 
 # take the mean
-window_size=60
+window_size=100
 for i, array in enumerate(arrays):
     arrays[i] = np.convolve(array,np.ones(window_size)/window_size,mode='valid')
 
