@@ -119,7 +119,7 @@ def train(args):
 def parse_arguments():
     p = argparse.ArgumentParser()
     p.add_argument('--config', type=argparse.FileType(mode='r'),
-                   default='configs/GNN_HalfCheetahBulletEnv-v0.yaml')
+                   default='configs/GNN_AntBulletEnv-v0.yaml')
     p.add_argument('--task_name', help='The name of the environment to use')
     p.add_argument(
         '--alg', help='The algorithm to be used for training', choices=["A2C", "PPO"])

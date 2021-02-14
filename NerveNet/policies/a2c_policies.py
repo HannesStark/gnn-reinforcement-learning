@@ -1,7 +1,16 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
-
+from stable_baselines3.common.distributions import (
+    BernoulliDistribution,
+    CategoricalDistribution,
+    DiagGaussianDistribution,
+    Distribution,
+    MultiCategoricalDistribution,
+    StateDependentNoiseDistribution,
+    make_proba_distribution,
+)
 import gym
 import torch
+from stable_baselines3.common.preprocessing import get_action_dim
 from torch import nn
 from torch_geometric.nn import GCNConv
 
@@ -161,10 +170,12 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         print('latent_pi', latent_pi.shape)
         print(' latent_vf', latent_vf.shape)
         print('latent_sde', latent_sde.shape)
-        # Evaluate the values for the given observations
+        mean_actions = latent_pi
         values = latent_vf # nervenet GNN already returns the values
-        distribution = self._get_action_dist_from_latent(latent_pi, latent_sde=latent_sde)
+        # Evaluate the values for the given observations
+        distribution = self._get_action_dist_from_latent(mean_actions, latent_sde=latent_sde)
         actions = distribution.get_actions(deterministic=deterministic)
+        print('actions:', actions.shape)
         log_prob = distribution.log_prob(actions)
         return actions, values, log_prob
 
@@ -183,3 +194,30 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         log_prob = distribution.log_prob(actions)
         values = latent_vf  # nervenet GNN already returns the values
         return values, log_prob, distribution.entropy()
+
+    def _get_action_dist_from_latent(self, mean_actions: torch.Tensor, latent_sde: Optional[torch.Tensor] = None) -> Distribution:
+        """
+        Retrieve action distribution given the latent codes.
+
+        :param latent_pi: Latent code for the actor
+        :param latent_sde: Latent code for the gSDE exploration function
+        :return: Action distribution
+        """
+
+        print('mean_actions shape:', mean_actions.shape)
+
+        if isinstance(self.action_dist, DiagGaussianDistribution):
+            return self.action_dist.proba_distribution(mean_actions, self.log_std)
+        elif isinstance(self.action_dist, CategoricalDistribution):
+            # Here mean_actions are the logits before the softmax
+            return self.action_dist.proba_distribution(action_logits=mean_actions)
+        elif isinstance(self.action_dist, MultiCategoricalDistribution):
+            # Here mean_actions are the flattened logits
+            return self.action_dist.proba_distribution(action_logits=mean_actions)
+        elif isinstance(self.action_dist, BernoulliDistribution):
+            # Here mean_actions are the logits (before rounding to get the binary actions)
+            return self.action_dist.proba_distribution(action_logits=mean_actions)
+        elif isinstance(self.action_dist, StateDependentNoiseDistribution):
+            return self.action_dist.proba_distribution(mean_actions, self.log_std, latent_sde)
+        else:
+            raise ValueError("Invalid action distribution")

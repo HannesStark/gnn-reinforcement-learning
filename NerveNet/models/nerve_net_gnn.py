@@ -91,6 +91,12 @@ class NerveNetGNN(nn.Module):
                                        xml_name=self.xml_name,
                                        xml_assets_path=self.xml_assets_path,
                                        embedding_option=embedding_option)
+
+        self.action_node_indices = []
+        for i, node in enumerate(self.info['tree']):
+            if node['is_output_node']:
+                self.action_node_indices.append(i)
+
         self.info["static_input_mapping"] = {}
         # Notes on edge attributes:
         # using one hot encoding leads to num_edge_features != 1
@@ -192,23 +198,22 @@ class NerveNetGNN(nn.Module):
                                 self.last_layer_dim_input
             vf_net_dim = self.last_layer_dim_input
 
-
         policy_net_dim = last_layer_dim_shared
         for layer_class, layer_size in net_arch["policy"]:
             policy_net.append(layer_class(
                 policy_net_dim, layer_size).to(self.device))
             policy_net.append(activation_fn().to(self.device))
             policy_net_dim = layer_size
-
+        # add mandatory linear layer that returns a scalar for each node
+        policy_net.append(nn.Linear(policy_net_dim, 1).to(self.device))
 
         for layer_class, layer_size in net_arch["value"]:
             value_net.append(layer_class(
                 vf_net_dim, layer_size).to(self.device))
             value_net.append(activation_fn().to(self.device))
             vf_net_dim = layer_size
-        # add mandatory linear layer that returns a scalar for each node
+        # add mandatory linear layer that returns a scalar for the pooled embeddings
         value_net.append(nn.Linear(vf_net_dim, 1).to(self.device))
-
 
         # Save dim, used to create the distributions
         self.latent_dim_pi = policy_net_dim
@@ -263,19 +268,15 @@ class NerveNetGNN(nn.Module):
                     sp_embedding[:, node_mask][:, :, attribute_mask])
 
         # embedding = sp_embedding
-        pre_message_passing = embedding
+        pre_message_passing = embedding  # [batch_size, number_nodes, features_dim]
         print('premessage', pre_message_passing.shape)
 
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
                 embedding = layer(embedding, self.edge_index,
-                                  self.update_masks).to(self.device)
+                                  self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
             else:
-                embedding = layer(embedding).to(self.device)  # batch x number nodes x features
-
-        embedding = self.flatten(embedding).to(self.device)
-
-
+                embedding = layer(embedding).to(self.device)  # [batch_size, number_nodes, features_dim]
 
         if self.gnn_for_values:
             pooled_embedding = torch.mean(embedding, dim=1)
@@ -284,6 +285,11 @@ class NerveNetGNN(nn.Module):
 
         latent_vf = self.value_net(pooled_embedding)
 
+        action_nodes_embedding = embedding[:, self.action_node_indices, :]  # [batchsize, number_action_nodes, features_dim]
+        action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[-1])  # [batchsize * number_action_nodes, features_dim]
 
-        latent_pi = self.debug(embedding)
+        flat_embedding = self.flatten(embedding)  # for debug network
+        latent_pi = self.debug(flat_embedding)  # [batch_size * number_nodes, features_dim]
+        latent_pi = self.policy_net(action_nodes_embedding_flat) # [batch_size * number_nodes, 1]
+        latent_pi = latent_pi.view(-1, action_nodes_embedding.shape[1]) # [batch_size, number_nodes]
         return latent_pi, latent_vf
