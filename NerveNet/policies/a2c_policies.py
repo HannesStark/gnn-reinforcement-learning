@@ -201,7 +201,6 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         :return: Action distribution
         """
 
-        print('mean_actions shape:', mean_actions.shape)
 
         if isinstance(self.action_dist, DiagGaussianDistribution):
             return self.action_dist.proba_distribution(mean_actions, self.log_std)
