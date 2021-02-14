@@ -232,9 +232,7 @@ class NerveNetGNN(nn.Module):
             nn.Linear(16, 16),
             activation_fn()
         )
-        print(last_layer_dim_shared)
-        print(last_layer_dim_pi)
-        print(last_layer_dim_vf)
+
         self.debug2 = nn.Sequential(
             nn.Linear(last_layer_dim_vf, 16),
             activation_fn(),
@@ -269,7 +267,6 @@ class NerveNetGNN(nn.Module):
 
         # embedding = sp_embedding
         pre_message_passing = embedding  # [batch_size, number_nodes, features_dim]
-        print('premessage', pre_message_passing.shape)
 
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
@@ -288,8 +285,9 @@ class NerveNetGNN(nn.Module):
         action_nodes_embedding = embedding[:, self.action_node_indices, :]  # [batchsize, number_action_nodes, features_dim]
         action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[-1])  # [batchsize * number_action_nodes, features_dim]
 
-        flat_embedding = self.flatten(embedding)  # for debug network
-        latent_pi = self.debug(flat_embedding)  # [batch_size * number_nodes, features_dim]
+        # for debugging
+        #flat_embedding = self.flatten(embedding)  # for debug network
+        #latent_pi = self.debug(flat_embedding)  # [batch_size * number_nodes, features_dim]
         latent_pi = self.policy_net(action_nodes_embedding_flat) # [batch_size * number_nodes, 1]
         latent_pi = latent_pi.view(-1, action_nodes_embedding.shape[1]) # [batch_size, number_nodes]
         return latent_pi, latent_vf

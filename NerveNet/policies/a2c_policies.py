@@ -167,15 +167,12 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         :return: action, value and log probability of the action
         """
         latent_pi, latent_vf, latent_sde = self._get_latent(obs)
-        print('latent_pi', latent_pi.shape)
-        print(' latent_vf', latent_vf.shape)
-        print('latent_sde', latent_sde.shape)
         mean_actions = latent_pi
         values = latent_vf # nervenet GNN already returns the values
         # Evaluate the values for the given observations
         distribution = self._get_action_dist_from_latent(mean_actions, latent_sde=latent_sde)
         actions = distribution.get_actions(deterministic=deterministic)
-        print('actions:', actions.shape)
+
         log_prob = distribution.log_prob(actions)
         return actions, values, log_prob
 
