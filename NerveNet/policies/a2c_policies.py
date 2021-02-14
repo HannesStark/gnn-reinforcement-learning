@@ -148,3 +148,38 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         if self.sde_features_extractor is not None:
             latent_sde = self.sde_features_extractor(features)
         return latent_pi, latent_vf, latent_sde
+
+    def forward(self, obs: torch.Tensor, deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Forward pass in all the networks (actor and critic)
+
+        :param obs: Observation
+        :param deterministic: Whether to sample or use deterministic actions
+        :return: action, value and log probability of the action
+        """
+        latent_pi, latent_vf, latent_sde = self._get_latent(obs)
+        print('latent_pi', latent_pi.shape)
+        print(' latent_vf', latent_vf.shape)
+        print('latent_sde', latent_sde.shape)
+        # Evaluate the values for the given observations
+        values = latent_vf # nervenet GNN already returns the values
+        distribution = self._get_action_dist_from_latent(latent_pi, latent_sde=latent_sde)
+        actions = distribution.get_actions(deterministic=deterministic)
+        log_prob = distribution.log_prob(actions)
+        return actions, values, log_prob
+
+    def evaluate_actions(self, obs: torch.Tensor, actions: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Evaluate actions according to the current policy,
+        given the observations.
+
+        :param obs:
+        :param actions:
+        :return: estimated value, log likelihood of taking those actions
+            and entropy of the action distribution.
+        """
+        latent_pi, latent_vf, latent_sde = self._get_latent(obs)
+        distribution = self._get_action_dist_from_latent(latent_pi, latent_sde)
+        log_prob = distribution.log_prob(actions)
+        values = latent_vf  # nervenet GNN already returns the values
+        return values, log_prob, distribution.entropy()
