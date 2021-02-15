@@ -53,12 +53,11 @@ def train(args):
                 (NerveNetConv, 64),
             ],
             "policy": [
-                (nn.Linear, 64),
                 (nn.Linear, 16),
             ],
             "value": [
-                (nn.Linear, 64),
                 (nn.Linear, 16),
+
             ]
         }
     else:

@@ -1,4 +1,4 @@
-experiment_name: 'GNN_Prop64_64_64_P64_16_V64_16_N1000_B64_lr3e-4'
+experiment_name: 'GNN_Prop64_64_64_P16_V16_N1000_B64_lr3e-4'
 
 task_name: AntBulletEnv-v0
 alg: PPO
@@ -7,7 +7,7 @@ policy: GnnPolicy
 device: cpu
 
 learning_rate: 3.0e-4
-total_timesteps: 5000000
+total_timesteps: 1000000
 n_steps: 1000
 batch_size: 64
 activation_fn: Tanh
