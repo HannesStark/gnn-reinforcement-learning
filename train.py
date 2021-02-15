@@ -18,6 +18,7 @@ import pybullet_envs  # register pybullet envs from bullet3
 from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption
 from NerveNet.models.nerve_net_conv import NerveNetConv
 from NerveNet.policies import register_policies
+import NerveNet.gym_envs.pybullet.register_disability_envs
 
 import gym
 from stable_baselines3 import PPO, A2C

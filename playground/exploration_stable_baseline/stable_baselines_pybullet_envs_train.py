@@ -72,7 +72,8 @@ model = PPO("GnnPolicy",
             )
 
 mean_reward_before_train = evaluate(model, num_episodes=4)
-model.learn(total_timesteps=2000000, tb_log_name='{}_{}'.format(task_name, datetime.now().strftime('%d-%m_%H-%M-%S')))
+model.learn(total_timesteps=2000000, tb_log_name='{}_{}'.format(
+    task_name, datetime.now().strftime('%d-%m_%H-%M-%S')))
 model.save("a2c_ant")
 mean_reward = evaluate(model, num_episodes=4)
 print(mean_reward_before_train)

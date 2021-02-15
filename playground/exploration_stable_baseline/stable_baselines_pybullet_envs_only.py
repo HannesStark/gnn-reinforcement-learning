@@ -2,8 +2,9 @@ import gym
 from gym import wrappers
 from stable_baselines3 import A2C
 import pybullet_envs  # register pybullet envs from bullet3
+import NerveNet.gym_envs.pybullet.register_disability_envs
 
-env = gym.make('AntBulletEnv-v0')
+env = gym.make('AntCpLeftBackBulletEnv-v0')
 
 
 env.render()  # call this before env.reset, if you want a window showing the environment

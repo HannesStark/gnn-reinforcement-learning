@@ -3,22 +3,30 @@ import subprocess
 
 from setuptools import setup
 
-# import torch
+import torch
 
-# cuda_v = f"cu{torch.version.cuda.replace('.', '')}"
-# torch_v = torch.__version__.split('.')
-# torch_v = '.'.join(torch_v[:-1] + ['0'])
+if torch.version.cuda is None:
+    cuda_v = ""
+else:
+    cuda_v = f"+cu{torch.version.cuda.replace('.', '')}"
+
+torch_v = torch.__version__.split('.')
+torch_v = '.'.join(torch_v[:-1] + ['0'])
 
 
-# def system(command: str):
-#     output = subprocess.check_output(command, shell=True)
-#     logging.info(output)
+def system(command: str):
+    output = subprocess.check_output(command, shell=True)
+    logging.info(output)
 
 
-# system(f'pip install torch-scatter -f https://pytorch-geometric.com/whl/torch-{torch_v}+{cuda_v}.html')
-# system(f'pip install torch-sparse -f https://pytorch-geometric.com/whl/torch-{torch_v}+{cuda_v}.html')
-# system(f'pip install torch-cluster -f https://pytorch-geometric.com/whl/torch-{torch_v}+{cuda_v}.html')
-# system(f'pip install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-{torch_v}+{cuda_v}.html')
+system(
+    f'pip install torch-scatter -f https://pytorch-geometric.com/whl/torch-{torch_v}{cuda_v}.html')
+system(
+    f'pip install torch-sparse -f https://pytorch-geometric.com/whl/torch-{torch_v}{cuda_v}.html')
+system(
+    f'pip install torch-cluster -f https://pytorch-geometric.com/whl/torch-{torch_v}{cuda_v}.html')
+system(
+    f'pip install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-{torch_v}{cuda_v}.html')
 
 install_requires = [
     'gym',
@@ -28,7 +36,7 @@ install_requires = [
     'lxml',
     'google-cloud-storage',
     'pandas',
-    # 'torch-geometric'
+    'torch-geometric'
 ]
 
 setup(
