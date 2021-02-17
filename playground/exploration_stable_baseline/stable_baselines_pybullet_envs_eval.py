@@ -15,7 +15,7 @@ import pybullet_envs  # register pybullet envs from bullet3
 import time
 
 model = PPO.load("model.zip", device='cpu')
-env_name = 'HalfCheetahBulletEnv-v0'
+env_name = 'AntBulletEnv-v0'
 
 env = gym.make(env_name)
 

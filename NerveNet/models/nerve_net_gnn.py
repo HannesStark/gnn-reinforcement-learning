@@ -122,7 +122,8 @@ class NerveNetGNN(nn.Module):
                                                                     self.info["input_type_dict"])
 
         self.shared_input_nets = nn.ModuleDict()
-        shared_net = nn.ModuleList()
+        gnn_policy = nn.ModuleList()
+        gnn_values = nn.ModuleList()
         policy_net = nn.ModuleList()
         value_net = nn.ModuleList()
         # Layer sizes of the network that only belongs to the policy network
@@ -168,18 +169,28 @@ class NerveNetGNN(nn.Module):
             # TODO: give layer a meaningful name
             if layer_class == GCNConv:
                 # for GCN Conv we need an additional parameter for the constructor
-                shared_net.append(layer_class(last_layer_dim_shared,
+                gnn_values.append(layer_class(last_layer_dim_shared,
+                                              layer_size,
+                                              # we already added self_loops ourselves
+                                              add_self_loops=False).to(self.device))
+                gnn_policy.append(layer_class(last_layer_dim_shared,
                                               layer_size,
                                               # we already added self_loops ourselves
                                               add_self_loops=False).to(self.device))
             elif layer_class == NerveNetConv:
-                shared_net.append(layer_class(last_layer_dim_shared,
+                gnn_values.append(layer_class(last_layer_dim_shared,
+                                              layer_size,
+                                              self.update_masks, device=device).to(self.device))
+                gnn_policy.append(layer_class(last_layer_dim_shared,
                                               layer_size,
                                               self.update_masks, device=device).to(self.device))
             else:
-                shared_net.append(layer_class(last_layer_dim_shared,
+                gnn_values.append(layer_class(last_layer_dim_shared,
                                               layer_size).to(self.device))
-            shared_net.append(activation_fn())
+                gnn_policy.append(layer_class(last_layer_dim_shared,
+                                              layer_size).to(self.device))
+            gnn_policy.append(activation_fn())
+            gnn_values.append(activation_fn())
             last_layer_dim_shared = layer_size
 
         # Build the non-shared part of the network
@@ -221,7 +232,8 @@ class NerveNetGNN(nn.Module):
 
         # Create networks
         # If the list of layers is empty, the network will just act as an Identity module
-        self.shared_net = shared_net
+        self.gnn_policy = gnn_policy
+        self.gnn_values = gnn_values
         self.flatten = nn.Flatten()
         self.policy_net = nn.Sequential(*policy_net).to(self.device)
         self.value_net = nn.Sequential(*value_net).to(self.device)
@@ -268,21 +280,30 @@ class NerveNetGNN(nn.Module):
         # embedding = sp_embedding
         pre_message_passing = embedding  # [batch_size, number_nodes, features_dim]
 
-        for layer in self.shared_net:
+        policy_embedding = embedding
+        for layer in self.gnn_policy:
             if isinstance(layer, MessagePassing):
-                embedding = layer(embedding, self.edge_index,
+                policy_embedding = layer(policy_embedding, self.edge_index,
                                   self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
             else:
-                embedding = layer(embedding).to(self.device)  # [batch_size, number_nodes, features_dim]
+                policy_embedding = layer(policy_embedding).to(self.device)  # [batch_size, number_nodes, features_dim]
+
+        value_embedding = embedding
+        for layer in self.gnn_policy:
+            if isinstance(layer, MessagePassing):
+                value_embedding = layer(value_embedding, self.edge_index,
+                                         self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
+            else:
+                value_embedding = layer(value_embedding).to(self.device)  # [batch_size, number_nodes, features_dim]
 
         if self.gnn_for_values:
-            pooled_embedding = torch.mean(embedding, dim=1)
+            pooled_embedding = torch.mean(value_embedding, dim=1)
         else:
             pooled_embedding = torch.mean(pre_message_passing, dim=1)
 
         latent_vf = self.value_net(pooled_embedding)
 
-        action_nodes_embedding = embedding[:, self.action_node_indices, :]  # [batchsize, number_action_nodes, features_dim]
+        action_nodes_embedding = policy_embedding[:, self.action_node_indices, :]  # [batchsize, number_action_nodes, features_dim]
         action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[-1])  # [batchsize * number_action_nodes, features_dim]
 
         # for debugging
