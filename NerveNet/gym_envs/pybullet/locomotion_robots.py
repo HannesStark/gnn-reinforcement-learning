@@ -150,6 +150,23 @@ class WalkerBase(MJCFBasedRobot):
         return -self.walk_target_dist / self.scene.dt
 
 
+class AntSixLegs(WalkerBase):
+    """
+    Ant Pybullet Robot but without the actuators for the two back legs
+    """
+    foot_list = ['front_left_foot', 'front_right_foot',
+                 'left_back_foot', 'right_back_foot',
+                 'left_middle_foot', 'right_middle_foot']
+
+    def __init__(self):
+        WalkerBase.__init__(self, "ant_six_legs.xml", "torso",
+                            action_dim=12, obs_dim=38, power=2.5)
+
+    def alive_bonus(self, z, pitch):
+        # 0.25 is central sphere rad, die if it scrapes the ground
+        return +1 if z > 0.26 else -1
+
+
 class Ant_Crippled_BackLegs(WalkerBase):
     """
     Ant Pybullet Robot but without the actuators for the two back legs

@@ -7,21 +7,27 @@ import os
 from datetime import datetime
 from pathlib import Path
 import numpy as np
+from pathlib import Path
 
 import gym
 from stable_baselines3 import PPO, A2C
 from stable_baselines3.common.callbacks import CheckpointCallback
 import pybullet_envs  # register pybullet envs from bullet3
+import NerveNet.gym_envs.pybullet.register_disability_envs
 import time
 
-model = PPO.load("model.zip", device='cpu')
-env_name = 'HalfCheetahBulletEnv-v0'
+model_dir = Path(
+    "C:\\Users\\tsbau\\git\\tum-adlr-ws21-04\\runs\\MLP_S64_P64_V64_N1000_B64_lr3e-4_AntSixLegsEnv-v0_17-02_00-46-47")
+
+model = PPO.load(model_dir / "model.zip", device='cpu')
+env_name = 'AntSixLegsEnv-v0'
 
 env = gym.make(env_name)
 
 env.render()  # call this before env.reset, if you want a window showing the environment
 
-def evaluate(model, num_episodes=100):
+
+def evaluate(model, num_episodes=1000):
     """
     Evaluate a RL agent
     :param model: (BaseRLModel object) the RL Agent
@@ -42,6 +48,7 @@ def evaluate(model, num_episodes=100):
             # here, action, rewards and dones are arrays
             # because we are using vectorized env
             obs, reward, done, info = env.step(action)
+            env.render('human')
             episode_rewards.append(reward)
 
         all_episode_rewards.append(sum(episode_rewards))
@@ -50,5 +57,6 @@ def evaluate(model, num_episodes=100):
     print("Mean reward:", mean_episode_reward, "Num episodes:", num_episodes)
 
     return mean_episode_reward
+
 
 mean_reward = evaluate(model, num_episodes=1)
