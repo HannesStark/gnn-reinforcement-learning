@@ -168,9 +168,10 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         """
         latent_pi, latent_vf, latent_sde = self._get_latent(obs)
         mean_actions = latent_pi
-        values = latent_vf # nervenet GNN already returns the values
+        values = latent_vf  # nervenet GNN already returns the values
         # Evaluate the values for the given observations
-        distribution = self._get_action_dist_from_latent(mean_actions, latent_sde=latent_sde)
+        distribution = self._get_action_dist_from_latent(
+            mean_actions, latent_sde=latent_sde)
         actions = distribution.get_actions(deterministic=deterministic)
 
         log_prob = distribution.log_prob(actions)
@@ -200,7 +201,6 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         :param latent_sde: Latent code for the gSDE exploration function
         :return: Action distribution
         """
-
 
         if isinstance(self.action_dist, DiagGaussianDistribution):
             return self.action_dist.proba_distribution(mean_actions, self.log_std)

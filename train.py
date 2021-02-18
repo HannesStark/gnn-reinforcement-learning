@@ -16,7 +16,7 @@ from torch import nn
 import pybullet_envs  # register pybullet envs from bullet3
 
 from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption
-from NerveNet.models.nerve_net_conv import NerveNetConv
+from NerveNet.models import nerve_net_conv
 from NerveNet.policies import register_policies
 import NerveNet.gym_envs.pybullet.register_disability_envs
 
@@ -43,26 +43,20 @@ def train(args):
     env = gym.make(args.task_name)
 
     # define network architecture
-    if args.policy == "GnnPolicy":
-        net_arch = {
-            "input": [
-                (nn.Linear, 8)
-            ],
-            "propagate": [
-                (NerveNetConv, 64),
-                (NerveNetConv, 64),
-                (NerveNetConv, 64),
-            ],
-            "policy": [
-                (nn.Linear, 64)
-            ],
-            "value": [
-                (nn.Linear, 64)
-            ]
-        }
-    else:
-        # for mlppolicy
-        net_arch = [64, {"pi": [64], "vf": [64]}]
+    if args.policy == "GnnPolicy" and args.net_arch is not None:
+        for net_arch_part in args.net_arch.keys():
+            for i, (layer_class_name, layer_size) in enumerate(args.net_arch[net_arch_part]):
+                if hasattr(nn, layer_class_name):
+                    args.net_arch[net_arch_part][i] = (
+                        getattr(nn, layer_class_name), layer_size)
+                elif hasattr(nerve_net_conv, layer_class_name):
+                    args.net_arch[net_arch_part][i] = (
+                        getattr(nerve_net_conv, layer_class_name), layer_size)
+                else:
+                    def get_class(x): return globals()[x]
+                    c = get_class(layer_size)
+                    assert c is not None, f"Unkown layer class '{layer_class_name}'"
+                    args.net_arch[net_arch_part][i] = (c, layer_size)
 
     # Prepare tensorboard logging
     log_name = '{}_{}_{}'.format(
@@ -74,9 +68,14 @@ def train(args):
     #    save_freq=1000000, save_path=run_dir, name_prefix='rl_model'))
     callbacks.append(LoggingCallback(logpath=run_dir))
     with open(os.path.join(run_dir, 'net_arch.txt'), 'w') as fp:
-        fp.write(str(net_arch))
+        fp.write(str(args.net_arch))
+
     train_args = copy.copy(args)
     train_args.config = train_args.config.name
+    if isinstance(train_args.net_arch, dict):
+        # cant
+        train_args.net_arch = {k: str(v)
+                               for k, v in train_args.net_arch.items()}
     pyaml.dump(train_args.__dict__, open(
         os.path.join(run_dir, 'train_arguments.yaml'), 'w'))
 
@@ -84,10 +83,12 @@ def train(args):
     alg_class = algorithms[args.alg]
     alg_kwargs = dict()
     policy_kwargs = dict()
-    policy_kwargs['net_arch'] = net_arch
+    if args.net_arch is not None:
+        policy_kwargs['net_arch'] = args.net_arch
     if args.activation_fn is not None:
         policy_kwargs["activation_fn"] = activation_functions[args.activation_fn]
     # policy_kwargs['device'] = args.device if args.device is not None else get_device('auto')
+
     if args.policy == "GnnPolicy":
         policy_kwargs["mlp_extractor_kwargs"] = {
             "task_name": args.task_name,
@@ -158,7 +159,7 @@ def parse_arguments():
         data = yaml.load(args.config, Loader=yaml.FullLoader)
         arg_dict = args.__dict__
         for key, value in data.items():
-            if isinstance(value, list):
+            if isinstance(value, list) and arg_dict[key] is not None:
                 for v in value:
                     arg_dict[key].append(v)
             else:
