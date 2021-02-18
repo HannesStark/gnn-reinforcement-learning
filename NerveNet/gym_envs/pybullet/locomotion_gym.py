@@ -2,6 +2,13 @@ from pybullet_envs.gym_locomotion_envs import WalkerBaseBulletEnv
 from NerveNet.gym_envs.pybullet import locomotion_robots
 
 
+class AntSixLegsEnv(WalkerBaseBulletEnv):
+
+    def __init__(self, render=False):
+        self.robot = locomotion_robots.AntSixLegs()
+        WalkerBaseBulletEnv.__init__(self, self.robot, render)
+
+
 class AntCpBackBulletEnv(WalkerBaseBulletEnv):
 
     def __init__(self, render=False):
