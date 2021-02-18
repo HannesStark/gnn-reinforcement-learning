@@ -49,15 +49,15 @@ def train(args):
                 (nn.Linear, 8)
             ],
             "propagate": [
-                (NerveNetConv, 16),
-                (NerveNetConv, 16),
-                (NerveNetConv, 16),
+                (NerveNetConv, 64),
+                (NerveNetConv, 64),
+                (NerveNetConv, 64),
             ],
             "policy": [
-                (nn.Linear, 16)
+                (nn.Linear, 64)
             ],
             "value": [
-                (nn.Linear, 16)
+                (nn.Linear, 64)
             ]
         }
     else:

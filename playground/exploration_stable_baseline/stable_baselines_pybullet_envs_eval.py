@@ -20,9 +20,10 @@ model = PPO.load("model.zip", device='cpu')
 env_name = 'AntBulletEnv-v0'
 model_dir = Path(
     "C:\\Users\\tsbau\\git\\tum-adlr-ws21-04\\runs\\MLP_S64_P64_V64_N1000_B64_lr3e-4_AntSixLegsEnv-v0_17-02_00-46-47")
+model_dir = Path("")
 
 model = PPO.load(model_dir / "model.zip", device='cpu')
-env_name = 'AntSixLegsEnv-v0'
+env_name = 'AntBulletEnv-v0'
 
 env = gym.make(env_name)
 
