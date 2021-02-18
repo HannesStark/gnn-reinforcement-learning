@@ -12,3 +12,13 @@ total_timesteps: 1000000
 n_steps: 1000
 batch_size: 64
 activation_fn: Tanh
+
+net_arch: 
+  input:
+    - [Linear, 12]
+  propagate:
+    - [NerveNetConv, 12]
+  policy:
+    - [Linear, 64]
+  value:
+    - [Linear, 64]
