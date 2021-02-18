@@ -73,6 +73,7 @@ def train(args):
     train_args = copy.copy(args)
     train_args.config = train_args.config.name
     if isinstance(train_args.net_arch, dict):
+        # cant
         train_args.net_arch = {k: str(v)
                                for k, v in train_args.net_arch.items()}
     pyaml.dump(train_args.__dict__, open(
@@ -82,7 +83,6 @@ def train(args):
     alg_class = algorithms[args.alg]
     alg_kwargs = dict()
     policy_kwargs = dict()
-
     if args.net_arch is not None:
         policy_kwargs['net_arch'] = args.net_arch
     if args.activation_fn is not None:
