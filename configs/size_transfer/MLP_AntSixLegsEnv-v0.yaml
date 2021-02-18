@@ -1,5 +1,3 @@
-experiment_name: MLP_S64_P64_V64_N1000_B64_lr3e-4
-
 task_name: AntSixLegsEnv-v0
 alg: PPO
 policy: MlpPolicy

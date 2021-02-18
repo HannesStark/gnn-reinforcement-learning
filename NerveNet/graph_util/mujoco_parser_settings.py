@@ -47,7 +47,8 @@ XML_DICT = {"Walker2DBulletEnv-v0": "walker2d.xml",
             "HopperBulletEnv-v0": "hopper.xml",
             "HumanoidBulletEnv-v0": "humanoid_symmetric.xml",
             "HumanoidFlagrunBulletEnv-v0": "humanoid_symmetric.xml",
-            "HumanoidFlagrunHarderBulletEnv-v0": "humanoid_symmetric.xml"}
+            "HumanoidFlagrunHarderBulletEnv-v0": "humanoid_symmetric.xml",
+            "AntSixLegsEnv-v0": "ant_six_legs.xml"}
 
 CUSTOM_SHARED_EMBEDDING_GROUPS = {
     # "Walker2DBulletEnv-v0":{},
