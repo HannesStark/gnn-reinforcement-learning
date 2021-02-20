@@ -111,6 +111,7 @@ class NerveNetGNN(nn.Module):
             self.info["relation_matrix"],
             self_loop=True
         )
+
         self.edge_index = self.edge_index.to(self.device)
         self.edge_attr = self.edge_attr.to(self.device)
         self.static_node_attr, self.static_node_attr_mask = get_static_node_attributes(
@@ -239,10 +240,12 @@ class NerveNetGNN(nn.Module):
         self.value_net = nn.Sequential(*value_net).to(self.device)
 
         self.debug = nn.Sequential(
-            nn.Linear(last_layer_dim_pi, 16),
+            nn.Linear(self.info["num_nodes"] * \
+                                self.last_layer_dim_input, 16),
             activation_fn(),
             nn.Linear(16, 16),
-            activation_fn()
+            activation_fn(),
+            nn.Linear(16, 1)
         )
 
         self.debug2 = nn.Sequential(
@@ -302,6 +305,8 @@ class NerveNetGNN(nn.Module):
             pooled_embedding = torch.mean(pre_message_passing, dim=1)
 
         latent_vf = self.value_net(pooled_embedding)
+        latent_vf = self.debug(self.flatten(pre_message_passing))
+
 
         action_nodes_embedding = policy_embedding[:, self.action_node_indices, :]  # [batchsize, number_action_nodes, features_dim]
         action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[-1])  # [batchsize * number_action_nodes, features_dim]
