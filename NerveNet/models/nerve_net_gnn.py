@@ -11,7 +11,7 @@ from torch_geometric.nn import GCNConv, MessagePassing
 
 from stable_baselines3.common.utils import get_device
 from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
-from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption
+from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption, RootRelationOption
 from NerveNet.graph_util.observation_mapper import get_update_masks, observations_to_node_attributes, \
     relation_matrix_to_adjacency_matrix, get_static_node_attributes
 from NerveNet.models.nerve_net_conv import NerveNetConv
@@ -89,6 +89,7 @@ class NerveNetGNN(nn.Module):
 
         self.info = parse_mujoco_graph(task_name=self.task_name,
                                        xml_name=self.xml_name,
+                                       root_relation_option=RootRelationOption.ALL,
                                        xml_assets_path=self.xml_assets_path,
                                        embedding_option=embedding_option)
 
@@ -241,7 +242,7 @@ class NerveNetGNN(nn.Module):
 
         self.debug = nn.Sequential(
             nn.Linear(self.info["num_nodes"] * \
-                                self.last_layer_dim_input, 16),
+                      self.last_layer_dim_input, 16),
             activation_fn(),
             nn.Linear(16, 16),
             activation_fn(),
@@ -287,7 +288,7 @@ class NerveNetGNN(nn.Module):
         for layer in self.gnn_policy:
             if isinstance(layer, MessagePassing):
                 policy_embedding = layer(policy_embedding, self.edge_index,
-                                  self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
+                                         self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
             else:
                 policy_embedding = layer(policy_embedding).to(self.device)  # [batch_size, number_nodes, features_dim]
 
@@ -295,7 +296,7 @@ class NerveNetGNN(nn.Module):
         for layer in self.gnn_policy:
             if isinstance(layer, MessagePassing):
                 value_embedding = layer(value_embedding, self.edge_index,
-                                         self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
+                                        self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
             else:
                 value_embedding = layer(value_embedding).to(self.device)  # [batch_size, number_nodes, features_dim]
 
@@ -305,15 +306,16 @@ class NerveNetGNN(nn.Module):
             pooled_embedding = torch.mean(pre_message_passing, dim=1)
 
         latent_vf = self.value_net(pooled_embedding)
-        latent_vf = self.debug(self.flatten(pre_message_passing))
+        # latent_vf = self.debug(self.flatten(pre_message_passing))
 
-
-        action_nodes_embedding = policy_embedding[:, self.action_node_indices, :]  # [batchsize, number_action_nodes, features_dim]
-        action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[-1])  # [batchsize * number_action_nodes, features_dim]
+        action_nodes_embedding = policy_embedding[:, self.action_node_indices,
+                                 :]  # [batchsize, number_action_nodes, features_dim]
+        action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[
+            -1])  # [batchsize * number_action_nodes, features_dim]
 
         # for debugging
-        #flat_embedding = self.flatten(embedding)  # for debug network
-        #latent_pi = self.debug(flat_embedding)  # [batch_size * number_nodes, features_dim]
-        latent_pi = self.policy_net(action_nodes_embedding_flat) # [batch_size * number_nodes, 1]
-        latent_pi = latent_pi.view(-1, action_nodes_embedding.shape[1]) # [batch_size, number_nodes]
+        # flat_embedding = self.flatten(embedding)  # for debug network
+        # latent_pi = self.debug(flat_embedding)  # [batch_size * number_nodes, features_dim]
+        latent_pi = self.policy_net(action_nodes_embedding_flat)  # [batch_size * number_nodes, 1]
+        latent_pi = latent_pi.view(-1, action_nodes_embedding.shape[1])  # [batch_size, number_nodes]
         return latent_pi, latent_vf
