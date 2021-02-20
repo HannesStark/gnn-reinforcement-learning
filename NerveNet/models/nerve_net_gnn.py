@@ -8,13 +8,24 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torch_geometric.nn import GCNConv, MessagePassing
+from torch_sparse import SparseTensor
 
 from stable_baselines3.common.utils import get_device
 from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
-from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption
+from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption, RootRelationOption
 from NerveNet.graph_util.observation_mapper import get_update_masks, observations_to_node_attributes, \
     relation_matrix_to_adjacency_matrix, get_static_node_attributes
 from NerveNet.models.nerve_net_conv import NerveNetConv
+
+
+def calc_A_row(A):
+    return A / A.sum(-1)[:, None]
+
+
+def calc_ppr_exact_row(A, alpha):
+    num_nodes = A.shape[0]
+    A_norm = calc_A_row(A)
+    return alpha * torch.inverse(torch.eye(num_nodes, device=A.device) + (alpha - 1) * A_norm)
 
 
 class NerveNetGNN(nn.Module):
@@ -31,6 +42,7 @@ class NerveNetGNN(nn.Module):
                  activation_fn: Type[nn.Module],
                  gnn_for_values=False,
                  embedding_option=EmbeddingOption.SHARED,
+                 root_relation_option=RootRelationOption.NONE,
                  device: Union[torch.device, str] = "auto",
                  task_name: str = None,
                  xml_name: str = None,
@@ -90,6 +102,7 @@ class NerveNetGNN(nn.Module):
         self.info = parse_mujoco_graph(task_name=self.task_name,
                                        xml_name=self.xml_name,
                                        xml_assets_path=self.xml_assets_path,
+                                       root_relation_option=root_relation_option,
                                        embedding_option=embedding_option)
 
         self.action_node_indices = []
@@ -109,10 +122,18 @@ class NerveNetGNN(nn.Module):
         # Ergo, we should not use them!
         self.edge_index, self.edge_attr = relation_matrix_to_adjacency_matrix(
             self.info["relation_matrix"],
-            self_loop=True
+            self_loop=False
         )
         self.edge_index = self.edge_index.to(self.device)
         self.edge_attr = self.edge_attr.to(self.device)
+        self.adj = SparseTensor.from_edge_index(edge_index=self.edge_index,
+                                                sparse_sizes=(self.info["num_nodes"], self.info["num_nodes"])).to_dense()
+        self.ppr = calc_ppr_exact_row(self.adj, 1e-1)
+        self.diffusion = torch.nn.functional.softmax(
+            torch.eye(self.info["num_nodes"]) + (1 - self.ppr))
+        self.diffusion = SparseTensor.from_dense(self.diffusion)
+        row, col, self.edge_attr = self.diffusion.coo()
+        self.edge_index = torch.stack((row, col), dim=0)
         self.static_node_attr, self.static_node_attr_mask = get_static_node_attributes(
             self.info["static_input_mapping"],
             self.info["num_nodes"])
@@ -195,7 +216,7 @@ class NerveNetGNN(nn.Module):
             vf_net_dim = last_layer_dim_shared
         else:
             last_layer_dim_vf = self.info["num_nodes"] * \
-                                self.last_layer_dim_input
+                self.last_layer_dim_input
             vf_net_dim = self.last_layer_dim_input
 
         policy_net_dim = last_layer_dim_shared
@@ -266,14 +287,17 @@ class NerveNetGNN(nn.Module):
                     sp_embedding[:, node_mask][:, :, attribute_mask])
 
         # embedding = sp_embedding
-        pre_message_passing = embedding  # [batch_size, number_nodes, features_dim]
+        # [batch_size, number_nodes, features_dim]
+        pre_message_passing = embedding
 
         for layer in self.shared_net:
             if isinstance(layer, MessagePassing):
-                embedding = layer(embedding, self.edge_index,
-                                  self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
+                embedding = layer(embedding,
+                                  self.edge_index,
+                                  self.edge_attr).to(self.device)  # [batch_size, number_nodes, features_dim]
             else:
-                embedding = layer(embedding).to(self.device)  # [batch_size, number_nodes, features_dim]
+                # [batch_size, number_nodes, features_dim]
+                embedding = layer(embedding).to(self.device)
 
         if self.gnn_for_values:
             pooled_embedding = torch.mean(embedding, dim=1)
@@ -282,12 +306,17 @@ class NerveNetGNN(nn.Module):
 
         latent_vf = self.value_net(pooled_embedding)
 
-        action_nodes_embedding = embedding[:, self.action_node_indices, :]  # [batchsize, number_action_nodes, features_dim]
-        action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[-1])  # [batchsize * number_action_nodes, features_dim]
+        # [batchsize, number_action_nodes, features_dim]
+        action_nodes_embedding = embedding[:, self.action_node_indices, :]
+        # [batchsize * number_action_nodes, features_dim]
+        action_nodes_embedding_flat = action_nodes_embedding.view(
+            -1, action_nodes_embedding.shape[-1])
 
         # for debugging
-        #flat_embedding = self.flatten(embedding)  # for debug network
-        #latent_pi = self.debug(flat_embedding)  # [batch_size * number_nodes, features_dim]
-        latent_pi = self.policy_net(action_nodes_embedding_flat) # [batch_size * number_nodes, 1]
-        latent_pi = latent_pi.view(-1, action_nodes_embedding.shape[1]) # [batch_size, number_nodes]
+        # flat_embedding = self.flatten(embedding)  # for debug network
+        # latent_pi = self.debug(flat_embedding)  # [batch_size * number_nodes, features_dim]
+        # [batch_size * number_nodes, 1]
+        latent_pi = self.policy_net(action_nodes_embedding_flat)
+        # [batch_size, number_nodes]
+        latent_pi = latent_pi.view(-1, action_nodes_embedding.shape[1])
         return latent_pi, latent_vf
