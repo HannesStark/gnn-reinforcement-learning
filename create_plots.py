@@ -27,10 +27,10 @@ arrays = []
 for reward_list in lists:
     arrays.append(np.array(reward_list)[:min_len])
 
-# take the mean
-window_size= 100
+# take the rolling mean by sliding an equally weighted window over the sequence
+window_size = 100
 for i, array in enumerate(arrays):
-    arrays[i] = np.convolve(array,np.ones(window_size)/window_size,mode='valid')
+    arrays[i] = np.convolve(array, np.ones(window_size) / window_size, mode='valid')
 
 plt.rcParams['figure.dpi'] = 300
 array = np.array(arrays).T
