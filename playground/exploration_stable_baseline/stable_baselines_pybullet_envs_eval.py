@@ -11,55 +11,36 @@ from pathlib import Path
 
 import gym
 from stable_baselines3 import PPO, A2C
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.evaluation import evaluate_policy
 import pybullet_envs  # register pybullet envs from bullet3
-import NerveNet.gym_envs.pybullet.register_disability_envs
+import NerveNet.gym_envs.pybullet.register_disability_envs  # register custom envs
 import time
 
-model = PPO.load("model.zip", device='cpu')
-env_name = 'AntBulletEnv-v0'
 model_dir = Path(
-    "C:\\Users\\tsbau\\git\\tum-adlr-ws21-04\\runs\\MLP_S64_P64_V64_N1000_B64_lr3e-4_AntSixLegsEnv-v0_17-02_00-46-47")
-model_dir = Path("")
+    "C:\\Users\\tsbau\\git\\tum-adlr-ws21-04\\runs\\MLP_S64_P64_V64_N1000_B64_lr3e-4_AntCpLeftBackBulletEnv-v0_14-02_23-42-32")
 
 model = PPO.load(model_dir / "model.zip", device='cpu')
-env_name = 'AntBulletEnv-v0'
+env_name = 'AntCpLeftBackBulletEnv-v0'
 
-env = gym.make(env_name)
+eval_env = gym.make(env_name)
 
-env.render()  # call this before env.reset, if you want a window showing the environment
-
-
-def evaluate(model, num_episodes=1000):
-    """
-    Evaluate a RL agent
-    :param model: (BaseRLModel object) the RL Agent
-    :param num_episodes: (int) number of episodes to evaluate it
-    :return: (float) Mean reward for the last num_episodes
-    """
-    # This function will only work for a single Environment
-
-    all_episode_rewards = []
-    for i in range(num_episodes):
-        episode_rewards = []
-        done = False
-        obs = env.reset()
-        while not done:
-            time.sleep(0.01)
-            # _states are only useful when using LSTM policies
-            action, _states = model.predict(obs)
-            # here, action, rewards and dones are arrays
-            # because we are using vectorized env
-            obs, reward, done, info = env.step(action)
-            env.render('human')
-            episode_rewards.append(reward)
-
-        all_episode_rewards.append(sum(episode_rewards))
-
-    mean_episode_reward = np.mean(all_episode_rewards)
-    print("Mean reward:", mean_episode_reward, "Num episodes:", num_episodes)
-
-    return mean_episode_reward
+eval_env.render()  # call this before env.reset, if you want a window showing the environment
 
 
-mean_reward = evaluate(model, num_episodes=1)
+def logging_callback(local_args, globals):
+    if local_args["done"]:
+        i = len(local_args["episode_rewards"])
+        episode_reward = local_args["episode_reward"]
+        episode_length = local_args["episode_length"]
+        print(f"Finished {i} episode with reward {episode_reward}")
+
+
+mean_reward, std_reward = evaluate_policy(model,
+                                          eval_env,
+                                          n_eval_episodes=10,
+                                          render=True,
+                                          deterministic=True,
+                                          return_episode_rewards=False,
+                                          callback=logging_callback)
+
+print(f"mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
