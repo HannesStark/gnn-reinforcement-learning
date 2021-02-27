@@ -10,6 +10,7 @@ import json
 import pyaml
 import torch
 import yaml
+import numpy as np
 
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import MlpPolicy
@@ -24,7 +25,6 @@ from stable_baselines3 import PPO, A2C
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 
 from util import LoggingCallback
-
 algorithms = dict(A2C=A2C, PPO=PPO)
 
 
@@ -35,19 +35,14 @@ def init_evaluate(args):
         train_arguments = yaml.load(yaml_data,
                                     Loader=yaml.FullLoader)
 
-    with open(args.train_output / "net_arch.txt") as json_data:
-        json_str = json_data.read()
-        # replace ' with " as a workaround because we didn't do a
-        # proper json.dump create the net_arch.txt
-        net_arch = json.loads(json_str.replace("'", '"'))
-
     model = algorithms[train_arguments["alg"]].load(
         args.train_output / args.model_name, device='cpu')
     env_name = train_arguments["task_name"]
 
     env = gym.make(env_name)
 
-    # env.render()  # call this before env.reset, if you want a window showing the environment
+    if args.render:
+        env.render()  # call this before env.reset, if you want a window showing the environment
 
     def logging_callback(local_args, globals):
         if local_args["done"]:
@@ -56,15 +51,27 @@ def init_evaluate(args):
             episode_length = local_args["episode_length"]
             print(f"Finished {i} episode with reward {episode_reward}")
 
-    mean_reward, std_reward = evaluate_policy(model,
-                                              env,
-                                              n_eval_episodes=10,
-                                              render=False,
-                                              deterministic=True,
-                                              return_episode_rewards=False,
-                                              callback=logging_callback)
+    episode_rewards, episode_lengths = evaluate_policy(model,
+                                                       env,
+                                                       n_eval_episodes=args.num_episodes,
+                                                       render=args.render,
+                                                       deterministic=True,
+                                                       return_episode_rewards=True,
+                                                       callback=logging_callback)
+    mean_reward = np.mean(episode_rewards)
+    std_reward = np.std(episode_rewards)
+
+    mean_length = np.mean(episode_lengths)
+    std_length = np.std(episode_lengths)
 
     print(f"mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
+    print(f"mean_length:{mean_length:.2f} +/- {std_length:.2f}")
+
+    eval_dir = args.train_output / "evaluation"
+    eval_dir.mkdir(parents=True, exist_ok=True)
+
+    np.save(eval_dir / "episode_rewards.npy", episode_rewards)
+    np.save(eval_dir / "episode_lengths.npy", episode_lengths)
 
 
 def dir_path(path):
@@ -88,11 +95,16 @@ def parse_arguments():
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",
                    type=int,
-                   default=1)
+                   default=3)
 
     p.add_argument('--model_name',
                    help='The name of your saved model',
                    default='model.zip')
+
+    p.add_argument('--render',
+                   help='Whether to render the evaluation with pybullet client',
+                   type=bool,
+                   default=False)
 
     args = p.parse_args()
 
