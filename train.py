@@ -45,7 +45,7 @@ def train(args):
     log_name = '{}_{}_{}'.format(
         args.experiment_name, args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
     run_dir = args.tensorboard_log + "/" + log_name
-    os.mkdir(run_dir)
+    Path(run_dir).mkdir(parents=True, exist_ok=True)
     callbacks = []
     # callbacks.append(CheckpointCallback(
     #    save_freq=1000000, save_path=run_dir, name_prefix='rl_model'))
@@ -196,6 +196,7 @@ def parse_arguments():
             else:
                 arg_dict[key] = value
 
+    args.learning_rate = float(args.learning_rate)
     if isinstance(args.xml_assets_path, str):
         args.xml_assets_path = Path(args.xml_assets_path)
 
@@ -213,7 +214,8 @@ def parse_arguments():
                 if isinstance(net_arch_info, dict):
                     for net_arch_key in net_arch_info.keys():
                         net_arch_desc += "_" + net_arch_key + \
-                            "_".join([i for i in net_arch_info[net_arch_key]])
+                            "_".join([str(i)
+                                      for i in net_arch_info[net_arch_key]])
                 else:
                     net_arch_desc += f"_{net_arch_info}"
 

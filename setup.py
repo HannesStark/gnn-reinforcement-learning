@@ -6,12 +6,12 @@ from setuptools import setup
 import torch
 
 if torch.version.cuda is None:
-    cuda_v = ""
+    cuda_v = "+cpu"
 else:
     cuda_v = f"+cu{torch.version.cuda.replace('.', '')}"
 
 torch_v = torch.__version__.split('.')
-torch_v = '.'.join(torch_v[:-1] + ['0'])
+torch_v = '.'.join(torch_v[:-2] + ['0'])
 
 
 def system(command: str):
