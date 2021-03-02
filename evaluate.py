@@ -36,7 +36,7 @@ def init_evaluate(args):
                                     Loader=yaml.FullLoader)
 
     model = algorithms[train_arguments["alg"]].load(
-        args.train_output / args.model_name, device='cpu')
+        args.train_output / "".join(train_arguments["model_name"].split(".")[:-1]), device='cpu')
     env_name = train_arguments["task_name"]
 
     env = gym.make(env_name)
@@ -90,21 +90,17 @@ def parse_arguments():
     p.add_argument('--train_output',
                    help="The directory where the training output & configs were logged to",
                    type=dir_path,
-                   default='runs/MLP_S64_P64_V64_N1000_B64_lr3e-4_AntSixLegsEnv-v0_17-02_00-46-47')
+                   default='runs/MLP_PPO_pi256_256_vf256_256_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_shared_AntBulletEnv-v0_28-02_21-54-55')
 
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",
                    type=int,
                    default=3)
 
-    p.add_argument('--model_name',
-                   help='The name of your saved model',
-                   default='model.zip')
-
     p.add_argument('--render',
                    help='Whether to render the evaluation with pybullet client',
                    type=bool,
-                   default=False)
+                   default=True)
 
     args = p.parse_args()
 
