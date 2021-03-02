@@ -90,12 +90,12 @@ def parse_arguments():
     p.add_argument('--train_output',
                    help="The directory where the training output & configs were logged to",
                    type=dir_path,
-                   default='runs/MLP_S64_P64_V64_N1000_B64_lr3e-4_AntSixLegsEnv-v0_17-02_00-46-47')
+                   default='runs/MLP_PPO_pi64_64_vf64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_shared_AntBulletEnv-v0_02-03_10-45-07')
 
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",
                    type=int,
-                   default=3)
+                   default=20)
 
     p.add_argument('--model_name',
                    help='The name of your saved model',

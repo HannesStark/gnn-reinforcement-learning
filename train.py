@@ -2,6 +2,7 @@ import argparse
 import copy
 import json
 import os
+from typing import Callable
 
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +26,7 @@ import NerveNet.gym_envs.pybullet.register_disability_envs
 import gym
 from stable_baselines3 import PPO, A2C
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
+from stable_baselines3.common.env_util import make_vec_env
 
 from util import LoggingCallback
 
@@ -56,8 +58,11 @@ def train(args):
     pyaml.dump(train_args.__dict__, open(
         os.path.join(run_dir, 'train_arguments.yaml'), 'w'))
 
+    # Create the vectorized environment
+    n_envs = train_args.n_envs  # Number of processes to use
+    env = make_vec_env(args.task_name, n_envs=1)
     # Create the environment
-    env = gym.make(args.task_name)
+    # env = gym.make(args.task_name)
 
     # define network architecture
     if args.policy == "GnnPolicy" and args.net_arch is not None:
@@ -80,7 +85,6 @@ def train(args):
 
     # Create the model
     alg_class = algorithms[args.alg]
-    alg_kwargs = dict()
     policy_kwargs = dict()
     if args.net_arch is not None:
         policy_kwargs['net_arch'] = args.net_arch
@@ -96,17 +100,32 @@ def train(args):
             'embedding_option': embedding_option[args.embedding_option],
             'xml_assets_path': args.xml_assets_path,
         }
+    alg_kwargs = args.__dict__.copy()
+    alg_kwargs.pop("config", None)
+    alg_kwargs.pop("task_name", None)
+    alg_kwargs.pop("policy", None)
+    alg_kwargs.pop("activation_fn", None)
+    alg_kwargs.pop("gnn_for_values", None)
+    alg_kwargs.pop("embedding_option", None)
+    alg_kwargs.pop("xml_assets_path", None)
+    alg_kwargs.pop("alg", None)
+    alg_kwargs.pop("net_arch", None)
+    alg_kwargs.pop("experiment_name", None)
+    alg_kwargs.pop("job_dir", None)
+    alg_kwargs.pop("total_timesteps", None)
+    alg_kwargs.pop("model_name", None)
+    alg_kwargs.pop("n_envs", None)
 
     model = alg_class(args.policy,
                       env,
                       verbose=1,
-                      n_steps=args.n_steps,
+                      #   n_steps=args.n_steps,
                       policy_kwargs=policy_kwargs,
-                      device=args.device,
-                      tensorboard_log=args.tensorboard_log,
-                      learning_rate=args.learning_rate,
-                      batch_size=args.batch_size,
-                      n_epochs=args.n_epochs,
+                      #   device=args.device,
+                      #   tensorboard_log=args.tensorboard_log,
+                      #   learning_rate=args.learning_rate,
+                      #   batch_size=args.batch_size,
+                      #   n_epochs=args.n_epochs,
                       **alg_kwargs)
 
     model.learn(total_timesteps=args.total_timesteps,
@@ -151,6 +170,11 @@ def parse_arguments():
                    help="For PPO: Number of epochs when optimizing the surrogate loss.",
                    type=int,
                    default=10)
+    p.add_argument('--n_envs',
+                   help="Number of environments to run in parallel to collect rollout. Each environment requires one CPU",
+                   type=int,
+                   default=2)
+
     p.add_argument('--seed', help='Random seed',
                    type=int,
                    default=1)
