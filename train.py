@@ -60,9 +60,7 @@ def train(args):
 
     # Create the vectorized environment
     n_envs = train_args.n_envs  # Number of processes to use
-    env = make_vec_env(args.task_name, n_envs=1)
-    # Create the environment
-    # env = gym.make(args.task_name)
+    env = make_vec_env(args.task_name, n_envs=n_envs)
 
     # define network architecture
     if args.policy == "GnnPolicy" and args.net_arch is not None:
