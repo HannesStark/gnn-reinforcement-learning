@@ -89,7 +89,7 @@ class NerveNetGNN(nn.Module):
 
         self.info = parse_mujoco_graph(task_name=self.task_name,
                                        xml_name=self.xml_name,
-                                       root_relation_option=RootRelationOption.ALL,
+                                       root_relation_option=RootRelationOption.NONE,
                                        xml_assets_path=self.xml_assets_path,
                                        embedding_option=embedding_option)
 
