@@ -123,7 +123,6 @@ def parse_mujoco_graph(task_name: str = None,
     node_type_dict = {node_type: [node["id"]
                                   for node in tree if node["type"] == node_type]
                       for node_type in ALLOWED_NODE_TYPES}
-    print(node_type_dict)
 
     output_type_dict, output_list = __get_output_mapping(
         tree,
