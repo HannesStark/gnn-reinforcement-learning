@@ -4,6 +4,7 @@ policy: GnnPolicy
 
 device: cpu
 
+drop_body_nodes: True
 gnn_for_values: True
 learning_rate: 1.0e-4
 total_timesteps: 2000000
