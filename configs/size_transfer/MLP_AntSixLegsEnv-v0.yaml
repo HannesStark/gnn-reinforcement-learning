@@ -9,8 +9,8 @@ n_envs: 1
 
 batch_size: 64
 n_epochs: 10
-n_steps: 2048
-learning_rate: 0.0002
+n_steps: 4096
+learning_rate: 0.0005
 
 
 net_arch:
