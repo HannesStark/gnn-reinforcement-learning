@@ -55,11 +55,11 @@ task_name = "AntBulletEnv-v0"
 
 xml_assets_path = Path(pybullet_data.getDataPath()) / "mjcf"
 
-info = parse_mujoco_graph(task_name=task_name,
-                                       xml_name=task_name,
-                                       root_relation_option=RootRelationOption.ALL,
-                                       xml_assets_path=xml_assets_path,
-                                       embedding_option=EmbeddingOption.SHARED)
+#info = parse_mujoco_graph(task_name=task_name,
+#                                       xml_name=task_name,
+#                                       root_relation_option=RootRelationOption.ALL,
+#                                       xml_assets_path=xml_assets_path,
+#                                       embedding_option=EmbeddingOption.SHARED)
 
 visualize_task_graph("AntBulletEnv-v0",
                                         figsize=(20,20),

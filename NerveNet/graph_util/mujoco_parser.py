@@ -1,4 +1,3 @@
-
 """
     Some helper functions to parse the mujoco xml template files
 
@@ -15,13 +14,11 @@ from enum import IntEnum, Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
-
 from NerveNet.graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 from NerveNet.graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
-from NerveNet.graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, SUPPORTED_JOINT_TYPES,\
+from NerveNet.graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, SUPPORTED_JOINT_TYPES, \
     SUPPORTED_JOINT_ATTRIBUTES, SUPPORTED_BODY_ATTRIBUTES, EDGE_TYPES, SHARED_EMBEDDING_GROUPS, \
     CUSTOM_SHARED_EMBEDDING_GROUPS, ControllerOption, RootRelationOption, EmbeddingOption
-
 
 __all__ = ["parse_mujoco_graph"]
 
@@ -134,7 +131,7 @@ def parse_mujoco_graph(task_name: str = None,
         embedding_option=embedding_option)
 
     num_nodes = len(obs_input_mapping)
-
+    print(tree)
     return dict(tree=tree,
                 relation_matrix=relation_matrix,
                 node_type_dict=node_type_dict,
@@ -205,7 +202,7 @@ def __extract_tree(xml_soup: BeautifulSoup,
                 tree[i]["id"] = tree[i]["id"] - index_offset
             if tree[i]["parent"] - index_offset > 0:
                 tree[i]["parent"] = tree[i]["parent"] - index_offset
-
+    print(tree)
     return tree
 
 
@@ -213,7 +210,8 @@ def __unpack_node(node: BeautifulSoup,
                   current_tree: dict,
                   parent_id: int,
                   motor_names: List[str],
-                  foot_list: List[str]) -> dict:
+                  foot_list: List[str],
+                  drop_body_nodes: bool = False) -> dict:
     '''
     This function is used to recursively unpack the xml graph structure of a given node.
 
@@ -233,33 +231,44 @@ def __unpack_node(node: BeautifulSoup,
         A dictionary representation of the xml tree rooted at the given node
         with "id" and "parent_id" references to encode the relationship structure.
     '''
-    id = max(current_tree.keys()) + 1
-    node_type = node.name
-
-    current_tree[id] = {
-        "type": node_type,
-        "is_output_node": node["name"] in motor_names,
-        "is_foot": node["name"] in foot_list,
-        "raw_name": node["name"],
-        "name": node_type + "_" + node["name"],
-        "id": id,
-        "parent": parent_id,  # to be set later
-        "info": node.attrs
-    }
-
-    if current_tree[id]["is_foot"]:
-        current_tree[id]["foot_id"] = foot_list.index(node["name"])
-
-    if current_tree[id]["type"] == "body":
-        geoms = node.find_all('geom', recursive=False)
-        current_tree[id].update({"geoms": [geom.attrs for geom in geoms]})
-
     child_soups = [child
                    for allowed_type in ALLOWED_NODE_TYPES
                    for child in node.find_all(allowed_type, recursive=False)
                    ]
+    for child in child_soups:
+        if child.name != 'body' and node.name == 'body' and drop_body_nodes:
+            node = child
+            child_soups.remove(child)
+    node_type = node.name
+    if node_type != 'body' or not drop_body_nodes:
+        id = max(current_tree.keys()) + 1
+        current_tree[id] = {
+            "type": node_type,
+            "is_output_node": node["name"] in motor_names,
+            "is_foot": node["name"] in foot_list,
+            "raw_name": node["name"],
+            "name": node_type + "_" + node["name"],
+            "id": id,
+            "parent": parent_id,  # to be set later
+            "info": node.attrs
+        }
+        if current_tree[id]["is_foot"]:
+            current_tree[id]["foot_id"] = foot_list.index(node["name"])
+
+        if current_tree[id]["type"] == "body":
+            geoms = node.find_all('geom', recursive=False)
+            current_tree[id].update({"geoms": [geom.attrs for geom in geoms]})
+    else:
+        id = parent_id
+
+    print('node_type: ', node_type)
+    print('node_name: ', node["name"])
+    print(len(child_soups))
+    print('current_id2', id)
+    print('parent_id, ', parent_id)
 
     for child in child_soups:
+        print('id for children', id)
         current_tree.update(__unpack_node(child,
                                           current_tree=current_tree,
                                           parent_id=id,
@@ -278,7 +287,8 @@ def __get_motor_names(xml_soup: BeautifulSoup) -> List[str]:
 
 def __build_relation_matrix(tree: List[dict],
                             use_sibling_relations: bool,
-                            root_relation_option: RootRelationOption) -> np.ndarray:
+                            root_relation_option: RootRelationOption,
+                            drop_body_nodes: bool = False) -> np.ndarray:
     '''
     TODO better docstring
 
@@ -333,9 +343,10 @@ def __build_relation_matrix(tree: List[dict],
                           and node["type"] == "body"]
 
     # disconnect root with its children
-    for child_node_id in root_children_ids:
-        relation_matrix[child_node_id][0] = 0
-        relation_matrix[0][child_node_id] = 0
+    if drop_body_nodes:
+        for child_node_id in root_children_ids:
+            relation_matrix[child_node_id][0] = 0
+            relation_matrix[0][child_node_id] = 0
 
     # connect root with its grand-children
     for grandchild_node in root_grandchildren:
