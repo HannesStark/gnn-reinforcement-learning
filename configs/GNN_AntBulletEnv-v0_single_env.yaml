@@ -24,6 +24,6 @@ net_arch:
     - [NerveNetConv, 64]
     - [NerveNetConv, 64]
   policy:
-    - [Linear, 16]
+    - [Linear, 64]
   value:
-    - [Linear, 16]
+    - [Linear, 64]
