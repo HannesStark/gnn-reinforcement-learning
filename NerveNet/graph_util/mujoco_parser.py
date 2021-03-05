@@ -238,6 +238,7 @@ def __unpack_node(node: BeautifulSoup,
                    for allowed_type in ALLOWED_NODE_TYPES
                    for child in node.find_all(allowed_type, recursive=False)
                    ]
+
     for child in child_soups:
         if child.name != 'body' and node.name == 'body' and drop_body_nodes:
             node = child
@@ -269,7 +270,8 @@ def __unpack_node(node: BeautifulSoup,
                                           current_tree=current_tree,
                                           parent_id=id,
                                           motor_names=motor_names,
-                                          foot_list=foot_list)
+                                          foot_list=foot_list,
+                                          drop_body_nodes=drop_body_nodes)
                             )
 
     return current_tree
@@ -339,7 +341,7 @@ def __build_relation_matrix(tree: List[dict],
                           and node["type"] == "body"]
 
     # disconnect root with its children
-    if drop_body_nodes:
+    if not drop_body_nodes:
         for child_node_id in root_children_ids:
             relation_matrix[child_node_id][0] = 0
             relation_matrix[0][child_node_id] = 0

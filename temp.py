@@ -6,16 +6,17 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
-
 def visualize_task_graph(task_name: str,
                          figsize=(10, 10),
                          use_sibling_relations: bool = True,
+                         drop_body_nodes=True,
                          root_relation_option: RootRelationOption = RootRelationOption.BODY):
     fig = plt.figure(figsize=figsize)
 
     task_log = parse_mujoco_graph(task_name=task_name,
                                   use_sibling_relations=use_sibling_relations,
-                                  root_relation_option=root_relation_option)
+                                  root_relation_option=root_relation_option,
+                                  drop_body_nodes=drop_body_nodes)
 
     node_colors = {
         "red": task_log["node_type_dict"]["root"],
@@ -51,18 +52,20 @@ def visualize_task_graph(task_name: str,
     plt.show()
     return task_log
 
+
 task_name = "AntBulletEnv-v0"
 
 xml_assets_path = Path(pybullet_data.getDataPath()) / "mjcf"
 
-#info = parse_mujoco_graph(task_name=task_name,
+# info = parse_mujoco_graph(task_name=task_name,
 #                                       xml_name=task_name,
 #                                       root_relation_option=RootRelationOption.ALL,
 #                                       xml_assets_path=xml_assets_path,
 #                                       embedding_option=EmbeddingOption.SHARED)
 
 visualize_task_graph("AntBulletEnv-v0",
-                                        figsize=(20,20),
-                                        use_sibling_relations = True,
-                                        root_relation_option = RootRelationOption.NONE
-                                        )
+                     figsize=(20, 20),
+                     use_sibling_relations=True,
+                     drop_body_nodes=True,
+                     root_relation_option=RootRelationOption.NONE
+                     )

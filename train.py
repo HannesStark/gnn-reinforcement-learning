@@ -200,7 +200,7 @@ def parse_arguments():
     p.add_argument('--drop_body_nodes',
                    help='Whether or not to use body nodes or only the joints and root nodes. Option is passed to the mujoco parser',
                    type=bool,
-                   default=True)
+                   default=False)
     p.add_argument('--learning_rate',
                    help='Learning rate value for the optimizers.',
                    type=float,
