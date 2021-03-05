@@ -133,7 +133,7 @@ def parse_mujoco_graph(task_name: str = None,
         embedding_option=embedding_option)
 
     num_nodes = len(obs_input_mapping)
-    print(tree)
+
     return dict(tree=tree,
                 relation_matrix=relation_matrix,
                 node_type_dict=node_type_dict,
