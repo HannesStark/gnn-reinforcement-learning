@@ -99,6 +99,7 @@ def train(args):
             'gnn_for_values': args.gnn_for_values,
             'embedding_option': embedding_option[args.embedding_option],
             'drop_body_nodes': args.drop_body_nodes,
+            'use_sibling_relations': args.use_sibling_relations,
             'xml_assets_path': args.xml_assets_path,
         }
     alg_kwargs = args.__dict__.copy()
@@ -116,6 +117,8 @@ def train(args):
     alg_kwargs.pop("total_timesteps", None)
     alg_kwargs.pop("model_name", None)
     alg_kwargs.pop("n_envs", None)
+    alg_kwargs.pop("drop_body_nodes", None)
+    alg_kwargs.pop("use_sibling_relations", None)
 
     model = alg_class(args.policy,
                       env,
@@ -199,6 +202,10 @@ def parse_arguments():
                    default='shared')
     p.add_argument('--drop_body_nodes',
                    help='Whether or not to use body nodes or only the joints and root nodes. Option is passed to the mujoco parser',
+                   type=bool,
+                   default=False)
+    p.add_argument('--use_sibling_relations',
+                   help='',
                    type=bool,
                    default=False)
     p.add_argument('--learning_rate',

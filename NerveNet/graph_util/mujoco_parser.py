@@ -82,7 +82,6 @@ def parse_mujoco_graph(task_name: str = None,
                 Value: list of ids in observation vector that belong to the node
             "node_parameters"
     '''
-
     if task_name is not None:  # task_name takes priority
         if task_name in NERVENET_XML_DICT:
             xml_name = NERVENET_XML_DICT[task_name]
@@ -130,8 +129,8 @@ def parse_mujoco_graph(task_name: str = None,
     obs_input_mapping, static_input_mapping, input_type_dict = __get_input_mapping(
         task_name,
         tree,
-        embedding_option=embedding_option)
-
+        embedding_option=embedding_option,
+        drop_body_nodes=drop_body_nodes)
     num_nodes = len(obs_input_mapping)
 
     return dict(tree=tree,
@@ -239,11 +238,19 @@ def __unpack_node(node: BeautifulSoup,
                    for child in node.find_all(allowed_type, recursive=False)
                    ]
 
+    # merge body nodes with joints option drop_body_nodes is set
     for child in child_soups:
         if child.name != 'body' and node.name == 'body' and drop_body_nodes:
+            # transfer foot attributes to merged joint nodes
+            if node["name"] in foot_list:
+                child['is_foot'] = True
+                child['foot_id'] = foot_list.index(node["name"])
+            else:
+                child['is_foot'] = False
             node = child
             child_soups.remove(child)
     node_type = node.name
+
     if node_type != 'body' or not drop_body_nodes:
         id = max(current_tree.keys()) + 1
         current_tree[id] = {
@@ -256,8 +263,14 @@ def __unpack_node(node: BeautifulSoup,
             "parent": parent_id,  # to be set later
             "info": node.attrs
         }
-        if current_tree[id]["is_foot"]:
-            current_tree[id]["foot_id"] = foot_list.index(node["name"])
+
+        if drop_body_nodes:
+            if node['is_foot']:
+                current_tree[id]["is_foot"] = True
+                current_tree[id]["foot_id"] = node['foot_id']
+        else:
+            if current_tree[id]["is_foot"]:
+                current_tree[id]["foot_id"] = foot_list.index(node["name"])
 
         if current_tree[id]["type"] == "body":
             geoms = node.find_all('geom', recursive=False)
@@ -446,7 +459,8 @@ def __get_output_mapping(tree: List[dict], controller_option: ControllerOption) 
     return output_type_dict, output_list
 
 
-def __get_input_mapping(task_name: str, tree: List[dict], embedding_option: EmbeddingOption) -> Tuple[dict, dict, dict]:
+def __get_input_mapping(task_name: str, tree: List[dict], embedding_option: EmbeddingOption, drop_body_nodes: bool) -> \
+        Tuple[dict, dict, dict]:
     '''
     Parameters:
         "tree":
@@ -480,7 +494,7 @@ def __get_input_mapping(task_name: str, tree: List[dict], embedding_option: Embe
 
     # this is how many observations we have for the root node
     # the observations for the joints follow after these
-    # TODO: varify that this can indeed be a constant
+    # TODO: verify that this can indeed be a constant
     _root_obs_size = 8
     _num_obs_per_joint = 2
     # we can immediately set the first observations to be used by the root node
@@ -508,6 +522,14 @@ def __get_input_mapping(task_name: str, tree: List[dict], embedding_option: Embe
     joints_obs_size = sum([len(obs_input_mapping[node["id"]])
                            for _, node in joints.items()])
 
+    if drop_body_nodes:
+        # if we are dropping body nodes, the "footness" of the body nodes was merged into the joints that replace the body nodes
+        # so we add the foot observations to the joints here
+        for joint_key, node in joints.items():
+            if node["is_foot"]:
+                # every foot has one boolean observation to tell whether the foot is on the ground
+                obs_input_mapping[node["id"]] += [_root_obs_size +
+                                                  joints_obs_size + node["foot_id"]]
     for _, node in bodies.items():
         # for pybullet envs there are no observations generated for body nodes
         # except the root observations
