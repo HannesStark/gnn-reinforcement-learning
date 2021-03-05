@@ -29,6 +29,7 @@ def parse_mujoco_graph(task_name: str = None,
                        xml_name: str = None,
                        xml_assets_path: Path = None,
                        use_sibling_relations: bool = True,
+                       drop_body_nodes: bool = False,
                        root_relation_option: RootRelationOption = RootRelationOption.BODY,
                        controller_option: ControllerOption = ControllerOption.SHARED,
                        embedding_option: EmbeddingOption = EmbeddingOption.SHARED,
@@ -109,12 +110,13 @@ def parse_mujoco_graph(task_name: str = None,
     with open(str(xml_path), "r") as xml_file:
         xml_soup = BeautifulSoup(xml_file.read(), "xml")
 
-    tree = __extract_tree(xml_soup, foot_list, absorb_root_joints)
+    tree = __extract_tree(xml_soup, foot_list, absorb_root_joints, drop_body_nodes=drop_body_nodes)
 
     relation_matrix = __build_relation_matrix(
         tree,
         use_sibling_relations=use_sibling_relations,
-        root_relation_option=root_relation_option)
+        root_relation_option=root_relation_option,
+        drop_body_nodes=drop_body_nodes)
 
     # group nodes by node type
     node_type_dict = {node_type: [node["id"]
@@ -145,7 +147,8 @@ def parse_mujoco_graph(task_name: str = None,
 
 def __extract_tree(xml_soup: BeautifulSoup,
                    foot_list: List[str],
-                   absorb_root_joints: bool):
+                   absorb_root_joints: bool,
+                   drop_body_nodes: bool = False):
     '''
     TODO: Add docstring
     '''
@@ -179,7 +182,8 @@ def __extract_tree(xml_soup: BeautifulSoup,
                               current_tree={0: root_node},
                               parent_id=0,
                               motor_names=motor_names,
-                              foot_list=foot_list).values())
+                              foot_list=foot_list,
+                              drop_body_nodes=drop_body_nodes).values())
 
     if absorb_root_joints:
         # absorb joints that are directly attached to the root node into the root node
@@ -202,7 +206,6 @@ def __extract_tree(xml_soup: BeautifulSoup,
                 tree[i]["id"] = tree[i]["id"] - index_offset
             if tree[i]["parent"] - index_offset > 0:
                 tree[i]["parent"] = tree[i]["parent"] - index_offset
-    print(tree)
     return tree
 
 
@@ -261,14 +264,7 @@ def __unpack_node(node: BeautifulSoup,
     else:
         id = parent_id
 
-    print('node_type: ', node_type)
-    print('node_name: ', node["name"])
-    print(len(child_soups))
-    print('current_id2', id)
-    print('parent_id, ', parent_id)
-
     for child in child_soups:
-        print('id for children', id)
         current_tree.update(__unpack_node(child,
                                           current_tree=current_tree,
                                           parent_id=id,
