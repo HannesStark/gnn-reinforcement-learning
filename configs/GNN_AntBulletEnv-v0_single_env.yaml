@@ -1,3 +1,5 @@
+experiment_name: bigger_net
+
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
@@ -10,9 +12,9 @@ gnn_for_values: True
 learning_rate: 1.0e-4
 
 total_timesteps: !!float 2e6
-n_envs: 1
+n_envs: 4
 n_steps: 1000
-batch_size: 64
+batch_size: 256
 activation_fn: Tanh
 
 net_arch: 
@@ -24,6 +26,6 @@ net_arch:
     - [NerveNetConv, 64]
     - [NerveNetConv, 64]
   policy:
-    - [Linear, 16]
+    - [Linear, 64]
   value:
-    - [Linear, 16]
+    - [Linear, 64]

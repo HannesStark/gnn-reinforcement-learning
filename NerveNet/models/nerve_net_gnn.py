@@ -275,7 +275,6 @@ class NerveNetGNN(nn.Module):
                                                        self.static_node_attr_mask,
                                                        self.info["num_nodes"]
                                                        ).to(self.device)
-
         # dense embedding matrix
         embedding = torch.zeros(
             (*sp_embedding.shape[:-1], self.last_layer_dim_input)).to(self.device)
@@ -297,7 +296,7 @@ class NerveNetGNN(nn.Module):
                 policy_embedding = layer(policy_embedding).to(self.device)  # [batch_size, number_nodes, features_dim]
 
         value_embedding = embedding
-        for layer in self.gnn_policy:
+        for layer in self.gnn_values:
             if isinstance(layer, MessagePassing):
                 value_embedding = layer(value_embedding, self.edge_index,
                                         self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
