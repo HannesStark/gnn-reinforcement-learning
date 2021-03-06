@@ -1,3 +1,5 @@
+experiment_name: sibling_relation
+
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy

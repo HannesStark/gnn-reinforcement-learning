@@ -1,3 +1,5 @@
+experiment_name: lower_lr
+
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
