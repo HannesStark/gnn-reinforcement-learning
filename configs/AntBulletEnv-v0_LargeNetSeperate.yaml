@@ -1,0 +1,35 @@
+
+task_name: AntBulletEnv-v0
+alg: PPO
+policy: MlpPolicy
+embedding_option: shared
+
+device: cpu
+
+total_timesteps: !!float 2e6
+n_envs: 1
+
+batch_size: 64
+n_epochs: 10
+n_steps: 2048
+learning_rate: 0.0002
+
+# gamma: 0.99
+# gae_lambda: 0.9
+# n_epochs: 20
+# ent_coef: 0.0
+# sde_sample_freq: 4
+# max_grad_norm: 0.5
+# vf_coef: 0.5
+# use_sde: True
+# clip_range: 0.4
+# activation_fn: ReLU
+
+
+net_arch:
+  - pi:
+      - 64
+      - 64
+    vf:
+      - 64
+      - 64

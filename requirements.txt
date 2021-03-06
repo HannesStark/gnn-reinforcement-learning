@@ -5,3 +5,5 @@ networkx
 lxml
 google-cloud-storage>=1.14.0
 pandas>=0.23.4
+pyaml
+tensorflow

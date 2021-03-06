@@ -1,4 +1,5 @@
-task_name: AntSixLegsEnv-v0
+
+task_name: AntBulletEnv-v0
 alg: PPO
 policy: MlpPolicy
 
@@ -9,6 +10,8 @@ n_steps: 2048
 batch_size: 64
 learning_rate: 3e-4
 
+
 net_arch:
-  - pi: [320, 320]
-    vf: [320, 320]
+  - 64
+  - pi: [64, 64]
+    vf: [64, 64]

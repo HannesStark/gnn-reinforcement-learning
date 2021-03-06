@@ -217,3 +217,149 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
             return self.action_dist.proba_distribution(mean_actions, self.log_std, latent_sde)
         else:
             raise ValueError("Invalid action distribution")
+
+
+class ActorCriticMLPPolicyTransfer(ActorCriticPolicy):
+    """
+    Wrapper of policy class for actor-critic algorithms (has both policy and value prediction).
+    Used by A2C, PPO and the likes.
+    This policy allows to use another MLP Policy for a different environment.
+    It is suited both for disability and size transfer tasks
+
+    Takes the same parameters as ActorCriticPolicy, but only the following to are not overwritten when 
+    loading the trained policy that should be transfered to a new environment.
+    :param observation_space: Observation space
+    :param action_space: Action space
+
+    :param transfered_policy: The ActorCriticPolicy that should be transfered to the new environment
+
+    There are also a few arguments which are not persisted for ActorCriticPolicy, so they need to be provided again:
+
+    :param log_std_init: Initial value for the log standard deviation
+    :param full_std: Whether to use (n_features x n_actions) parameters
+        for the std instead of only (n_features,) when using gSDE
+    :param sde_net_arch: Network architecture for extracting features
+        when using gSDE. If None, the latent features from the policy will be used.
+        Pass an empty list to use the states as features.
+    :param use_expln: Use ``expln()`` function instead of ``exp()`` to ensure
+        a positive standard deviation (cf paper). It allows to keep variance
+        above zero and prevent it from growing too fast. In practice, ``exp()`` is usually enough.
+    :param squash_output: Whether to squash the output using a tanh function,
+        this allows to ensure boundaries when using gSDE.
+    """
+
+    def __init__(
+            self,
+            observation_space: gym.spaces.Space,
+            action_space: gym.spaces.Space,
+            lr_schedule: Schedule,
+            transfered_policy: Type[ActorCriticPolicy] = None,
+            use_sde: bool = False,
+            log_std_init: float = 0.0,
+            full_std: bool = True,
+            use_expln: bool = False,
+            **kwargs,
+    ):
+
+        super(ActorCriticMLPPolicyTransfer, self).__init__(
+            observation_space,
+            action_space,
+            lr_schedule,
+            net_arch=transfered_policy.net_arch,
+            activation_fn=transfered_policy.activation_fn,
+            ortho_init=transfered_policy.ortho_init,
+            use_sde=transfered_policy.use_sde,
+            log_std_init=log_std_init,
+            full_std=full_std,
+            sde_net_arch=transfered_policy.sde_net_arch,
+            use_expln=use_expln,
+            squash_output=transfered_policy.squash_output,
+            features_extractor_class=transfered_policy.features_extractor_class,
+            features_extractor_kwargs=transfered_policy.features_extractor_kwargs,
+            normalize_images=transfered_policy.normalize_images,
+            optimizer_class=transfered_policy.optimizer_class,
+            optimizer_kwargs=transfered_policy.optimizer_kwargs,
+        )
+
+        # current action dist is 12
+        # transfered action dist is 8.
+        # we need padding here
+        self.action_dist = transfered_policy.action_dist
+
+        # old: feature_dim: 38
+        # new: feature_dim: 28
+        self.features_extractor = transfered_policy.features_extractor
+
+        # old and new have latent_dim for pi and vf: 64
+        self.mlp_extractor = transfered_policy.mlp_extractor
+
+        # in_features for both = 64
+        # out is 12 and 8
+        self.action_net = transfered_policy.action_net
+
+        # this fully matches: in 64 and out 1
+        self.value_net = transfered_policy.value_net
+
+    def _get_latent(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Get the latent code (i.e., activations of the last layer of each network)
+        for the different networks.
+
+        :param obs: Observation
+        :return: Latent codes
+            for the actor, the value function and for gSDE function
+        """
+        # Preprocess the observation if needed
+        features = self.extract_features(obs)
+        latent_pi, latent_vf = self.mlp_extractor(features)
+
+        # Features for sde
+        latent_sde = latent_pi
+        if self.sde_features_extractor is not None:
+            latent_sde = self.sde_features_extractor(features)
+        return latent_pi, latent_vf, latent_sde
+
+    def forward(self, obs: torch.Tensor, deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Forward pass in all the networks (actor and critic)
+
+        :param obs: Observation
+        :param deterministic: Whether to sample or use deterministic actions
+        :return: action, value and log probability of the action
+        """
+        latent_pi, latent_vf, latent_sde = self._get_latent(obs)
+        # Evaluate the values for the given observations
+        values = self.value_net(latent_vf)
+        distribution = self._get_action_dist_from_latent(
+            latent_pi, latent_sde=latent_sde)
+        actions = distribution.get_actions(deterministic=deterministic)
+        log_prob = distribution.log_prob(actions)
+        return actions, values, log_prob
+
+    def _predict(self, observation: torch.Tensor, deterministic: bool = False) -> torch.Tensor:
+        """
+        Get the action according to the policy for a given observation.
+
+        :param observation:
+        :param deterministic: Whether to use stochastic or deterministic actions
+        :return: Taken action according to the policy
+        """
+        latent_pi, _, latent_sde = self._get_latent(observation)
+        distribution = self._get_action_dist_from_latent(latent_pi, latent_sde)
+        return distribution.get_actions(deterministic=deterministic)
+
+    def evaluate_actions(self, obs: torch.Tensor, actions: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Evaluate actions according to the current policy,
+        given the observations.
+
+        :param obs:
+        :param actions:
+        :return: estimated value, log likelihood of taking those actions
+            and entropy of the action distribution.
+        """
+        latent_pi, latent_vf, latent_sde = self._get_latent(obs)
+        distribution = self._get_action_dist_from_latent(latent_pi, latent_sde)
+        log_prob = distribution.log_prob(actions)
+        values = self.value_net(latent_vf)
+        return values, log_prob, distribution.entropy()
