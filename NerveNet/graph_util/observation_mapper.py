@@ -1,3 +1,4 @@
+import itertools
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import torch
 import numpy as np
@@ -59,8 +60,7 @@ def observations_to_node_attributes(observations: torch.Tensor,
 
     batch_size, observation_sample_size = observations.shape
     # check that there is a mapping for every element of the observation vector
-    assert max(list(obs_input_mapping.values()))[
-        0] + 1 == observation_sample_size
+    assert max(itertools.chain.from_iterable(list(obs_input_mapping.values()))) + 1 == observation_sample_size
 
     max_static_feature_dim = static_node_attr.shape[1]
     max_obs_feature_dim = max([len(l) for l in obs_input_mapping.values()])
@@ -69,7 +69,6 @@ def observations_to_node_attributes(observations: torch.Tensor,
         attributes = torch.zeros((batch_size,
                                   num_nodes,
                                   num_node_features), dtype=torch.float32, device=observations.device)
-
         if max_static_feature_dim != 0:
             attributes[:, :, -max_static_feature_dim:] = torch.from_numpy(
                 static_node_attr).to(observations.device)
@@ -80,7 +79,6 @@ def observations_to_node_attributes(observations: torch.Tensor,
                 obs_mask_size = max(obs_attr_mask) + 1
                 attributes[:, node_mask, 0:obs_mask_size] = observations[:, flatten(
                     observation_mask[group_name])].reshape(batch_size, len(node_mask), -1)
-
     return attributes
 
 
@@ -94,6 +92,7 @@ def get_update_masks(obs_input_mapping: dict,
                 A dictionary containing groups of nodes that should share the
                 same update function instance
     """
+
     max_obs_feature_dim = max([len(l) for l in obs_input_mapping.values()])
     update_mask = {}
     obs_mask = {}
@@ -106,4 +105,5 @@ def get_update_masks(obs_input_mapping: dict,
         update_mask[group_name] = (group_nodes, attribute_mask)
         obs_mask[group_name] = [obs_input_mapping[node]
                                 for node in group_nodes]
+
     return update_mask, obs_mask

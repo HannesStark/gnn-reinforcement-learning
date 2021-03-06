@@ -30,6 +30,8 @@ class NerveNetGNN(nn.Module):
                  net_arch: Dict[str, List[Tuple[nn.Module, int]]],
                  activation_fn: Type[nn.Module],
                  gnn_for_values=False,
+                 use_sibling_relations: bool = False,
+                 drop_body_nodes: bool = True,
                  embedding_option=EmbeddingOption.SHARED,
                  device: Union[torch.device, str] = "auto",
                  task_name: str = None,
@@ -89,7 +91,9 @@ class NerveNetGNN(nn.Module):
 
         self.info = parse_mujoco_graph(task_name=self.task_name,
                                        xml_name=self.xml_name,
-                                       root_relation_option=RootRelationOption.ALL,
+                                       use_sibling_relations = use_sibling_relations,
+                                       drop_body_nodes= drop_body_nodes,
+                                       root_relation_option=RootRelationOption.NONE,
                                        xml_assets_path=self.xml_assets_path,
                                        embedding_option=embedding_option)
 
@@ -269,7 +273,6 @@ class NerveNetGNN(nn.Module):
                                                        self.static_node_attr_mask,
                                                        self.info["num_nodes"]
                                                        ).to(self.device)
-
         # dense embedding matrix
         embedding = torch.zeros(
             (*sp_embedding.shape[:-1], self.last_layer_dim_input)).to(self.device)
@@ -293,7 +296,7 @@ class NerveNetGNN(nn.Module):
                     self.device)  # [batch_size, number_nodes, features_dim]
 
         value_embedding = embedding
-        for layer in self.gnn_policy:
+        for layer in self.gnn_values:
             if isinstance(layer, MessagePassing):
                 value_embedding = layer(value_embedding, self.edge_index,
                                         self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]

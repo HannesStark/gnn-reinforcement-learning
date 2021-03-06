@@ -60,9 +60,7 @@ def train(args):
 
     # Create the vectorized environment
     n_envs = train_args.n_envs  # Number of processes to use
-    env = make_vec_env(args.task_name, n_envs=1)
-    # Create the environment
-    # env = gym.make(args.task_name)
+    env = make_vec_env(args.task_name, n_envs=n_envs)
 
     # define network architecture
     if args.policy == "GnnPolicy" and args.net_arch is not None:
@@ -75,7 +73,9 @@ def train(args):
                     args.net_arch[net_arch_part][i] = (
                         getattr(nerve_net_conv, layer_class_name), layer_size)
                 else:
-                    def get_class(x): return globals()[x]
+                    def get_class(x):
+                        return globals()[x]
+
                     c = get_class(layer_size)
                     assert c is not None, f"Unkown layer class '{layer_class_name}'"
                     args.net_arch[net_arch_part][i] = (c, layer_size)
@@ -98,6 +98,8 @@ def train(args):
             'device': args.device,
             'gnn_for_values': args.gnn_for_values,
             'embedding_option': embedding_option[args.embedding_option],
+            'drop_body_nodes': args.drop_body_nodes,
+            'use_sibling_relations': args.use_sibling_relations,
             'xml_assets_path': args.xml_assets_path,
         }
     alg_kwargs = args.__dict__.copy()
@@ -115,6 +117,8 @@ def train(args):
     alg_kwargs.pop("total_timesteps", None)
     alg_kwargs.pop("model_name", None)
     alg_kwargs.pop("n_envs", None)
+    alg_kwargs.pop("drop_body_nodes", None)
+    alg_kwargs.pop("use_sibling_relations", None)
 
     model = alg_class(args.policy,
                       env,
@@ -180,7 +184,7 @@ def parse_arguments():
                    default=1)
     p.add_argument('--device',
                    help='Device (cpu, cuda, ...) on which the code should be run.'
-                   'Setting it to auto, the code will be run on the GPU if possible.',
+                        'Setting it to auto, the code will be run on the GPU if possible.',
                    default="auto")
     p.add_argument('--net_arch',
                    help='The specification of the policy and value networks',
@@ -196,6 +200,14 @@ def parse_arguments():
                    help='Embedding Option for mujoco parser',
                    choices=["shared", "unified"],
                    default='shared')
+    p.add_argument('--drop_body_nodes',
+                   help='Whether or not to use body nodes or only the joints and root nodes. Option is passed to the mujoco parser',
+                   type=bool,
+                   default=False)
+    p.add_argument('--use_sibling_relations',
+                   help='',
+                   type=bool,
+                   default=False)
     p.add_argument('--learning_rate',
                    help='Learning rate value for the optimizers.',
                    type=float,
@@ -238,13 +250,14 @@ def parse_arguments():
                 if isinstance(net_arch_info, dict):
                     for net_arch_key in net_arch_info.keys():
                         net_arch_desc += "_" + net_arch_key + \
-                            "_".join([str(i)
-                                      for i in net_arch_info[net_arch_key]])
+                                         "_".join([str(i)
+                                                   for i in net_arch_info[net_arch_key]])
                 else:
                     net_arch_desc += f"_{net_arch_info}"
 
         args.experiment_name = f"{policy_abbrv}_{args.alg}{net_arch_desc}_N{args.n_steps}_B{args.batch_size}_"
         args.experiment_name += f"lr{args.learning_rate:.0e}_GNNValue_{args.gnn_for_values:0d}_EmbOpt_{args.embedding_option}"
+        args.experiment_name += f"Epochs_{args.n_epochs}_Nenvs_{args.n_envs}"
 
     return args
 

@@ -4,11 +4,19 @@ policy: MlpPolicy
 
 device: cpu
 
-total_timesteps: 5000000
-n_steps: 2048
+total_timesteps: !!float 2e6
+n_envs: 1
+
 batch_size: 64
-learning_rate: 3e-4
+n_epochs: 10
+n_steps: 4096
+learning_rate: 0.0005
+
 
 net_arch:
-  - pi: [320, 320]
-    vf: [320, 320]
+  - pi:
+      - 64
+      - 64
+    vf:
+      - 64
+      - 64

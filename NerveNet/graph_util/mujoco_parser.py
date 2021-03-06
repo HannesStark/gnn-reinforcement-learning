@@ -1,4 +1,3 @@
-
 """
     Some helper functions to parse the mujoco xml template files
 
@@ -15,13 +14,11 @@ from enum import IntEnum, Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from bs4 import BeautifulSoup
 
-
 from NerveNet.graph_util.mujoco_parser_nervenet import XML_DICT as NERVENET_XML_DICT
 from NerveNet.graph_util.mujoco_parser_settings import XML_DICT as PYBULLET_XML_DICT
-from NerveNet.graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, SUPPORTED_JOINT_TYPES,\
+from NerveNet.graph_util.mujoco_parser_settings import ALLOWED_NODE_TYPES, SUPPORTED_JOINT_TYPES, \
     SUPPORTED_JOINT_ATTRIBUTES, SUPPORTED_BODY_ATTRIBUTES, EDGE_TYPES, SHARED_EMBEDDING_GROUPS, \
     CUSTOM_SHARED_EMBEDDING_GROUPS, ControllerOption, RootRelationOption, EmbeddingOption
-
 
 __all__ = ["parse_mujoco_graph"]
 
@@ -32,6 +29,7 @@ def parse_mujoco_graph(task_name: str = None,
                        xml_name: str = None,
                        xml_assets_path: Path = None,
                        use_sibling_relations: bool = True,
+                       drop_body_nodes: bool = False,
                        root_relation_option: RootRelationOption = RootRelationOption.BODY,
                        controller_option: ControllerOption = ControllerOption.SHARED,
                        embedding_option: EmbeddingOption = EmbeddingOption.SHARED,
@@ -84,7 +82,6 @@ def parse_mujoco_graph(task_name: str = None,
                 Value: list of ids in observation vector that belong to the node
             "node_parameters"
     '''
-
     if task_name is not None:  # task_name takes priority
         if task_name in NERVENET_XML_DICT:
             xml_name = NERVENET_XML_DICT[task_name]
@@ -112,12 +109,13 @@ def parse_mujoco_graph(task_name: str = None,
     with open(str(xml_path), "r") as xml_file:
         xml_soup = BeautifulSoup(xml_file.read(), "xml")
 
-    tree = __extract_tree(xml_soup, foot_list, absorb_root_joints)
+    tree = __extract_tree(xml_soup, foot_list, absorb_root_joints, drop_body_nodes=drop_body_nodes)
 
     relation_matrix = __build_relation_matrix(
         tree,
         use_sibling_relations=use_sibling_relations,
-        root_relation_option=root_relation_option)
+        root_relation_option=root_relation_option,
+        drop_body_nodes=drop_body_nodes)
 
     # group nodes by node type
     node_type_dict = {node_type: [node["id"]
@@ -131,8 +129,8 @@ def parse_mujoco_graph(task_name: str = None,
     obs_input_mapping, static_input_mapping, input_type_dict = __get_input_mapping(
         task_name,
         tree,
-        embedding_option=embedding_option)
-
+        embedding_option=embedding_option,
+        drop_body_nodes=drop_body_nodes)
     num_nodes = len(obs_input_mapping)
 
     return dict(tree=tree,
@@ -148,7 +146,8 @@ def parse_mujoco_graph(task_name: str = None,
 
 def __extract_tree(xml_soup: BeautifulSoup,
                    foot_list: List[str],
-                   absorb_root_joints: bool):
+                   absorb_root_joints: bool,
+                   drop_body_nodes: bool = False):
     '''
     TODO: Add docstring
     '''
@@ -182,7 +181,8 @@ def __extract_tree(xml_soup: BeautifulSoup,
                               current_tree={0: root_node},
                               parent_id=0,
                               motor_names=motor_names,
-                              foot_list=foot_list).values())
+                              foot_list=foot_list,
+                              drop_body_nodes=drop_body_nodes).values())
 
     if absorb_root_joints:
         # absorb joints that are directly attached to the root node into the root node
@@ -205,7 +205,6 @@ def __extract_tree(xml_soup: BeautifulSoup,
                 tree[i]["id"] = tree[i]["id"] - index_offset
             if tree[i]["parent"] - index_offset > 0:
                 tree[i]["parent"] = tree[i]["parent"] - index_offset
-
     return tree
 
 
@@ -213,7 +212,8 @@ def __unpack_node(node: BeautifulSoup,
                   current_tree: dict,
                   parent_id: int,
                   motor_names: List[str],
-                  foot_list: List[str]) -> dict:
+                  foot_list: List[str],
+                  drop_body_nodes: bool = False) -> dict:
     '''
     This function is used to recursively unpack the xml graph structure of a given node.
 
@@ -233,38 +233,58 @@ def __unpack_node(node: BeautifulSoup,
         A dictionary representation of the xml tree rooted at the given node
         with "id" and "parent_id" references to encode the relationship structure.
     '''
-    id = max(current_tree.keys()) + 1
-    node_type = node.name
-
-    current_tree[id] = {
-        "type": node_type,
-        "is_output_node": node["name"] in motor_names,
-        "is_foot": node["name"] in foot_list,
-        "raw_name": node["name"],
-        "name": node_type + "_" + node["name"],
-        "id": id,
-        "parent": parent_id,  # to be set later
-        "info": node.attrs
-    }
-
-    if current_tree[id]["is_foot"]:
-        current_tree[id]["foot_id"] = foot_list.index(node["name"])
-
-    if current_tree[id]["type"] == "body":
-        geoms = node.find_all('geom', recursive=False)
-        current_tree[id].update({"geoms": [geom.attrs for geom in geoms]})
-
     child_soups = [child
                    for allowed_type in ALLOWED_NODE_TYPES
                    for child in node.find_all(allowed_type, recursive=False)
                    ]
+
+    # merge body nodes with joints option drop_body_nodes is set
+    for child in child_soups:
+        if child.name != 'body' and node.name == 'body' and drop_body_nodes:
+            # transfer foot attributes to merged joint nodes
+            if node["name"] in foot_list:
+                child['is_foot'] = True
+                child['foot_id'] = foot_list.index(node["name"])
+            else:
+                child['is_foot'] = False
+            node = child
+            child_soups.remove(child)
+    node_type = node.name
+
+    if node_type != 'body' or not drop_body_nodes:
+        id = max(current_tree.keys()) + 1
+        current_tree[id] = {
+            "type": node_type,
+            "is_output_node": node["name"] in motor_names,
+            "is_foot": node["name"] in foot_list,
+            "raw_name": node["name"],
+            "name": node_type + "_" + node["name"],
+            "id": id,
+            "parent": parent_id,  # to be set later
+            "info": node.attrs
+        }
+
+        if drop_body_nodes:
+            if node['is_foot']:
+                current_tree[id]["is_foot"] = True
+                current_tree[id]["foot_id"] = node['foot_id']
+        else:
+            if current_tree[id]["is_foot"]:
+                current_tree[id]["foot_id"] = foot_list.index(node["name"])
+
+        if current_tree[id]["type"] == "body":
+            geoms = node.find_all('geom', recursive=False)
+            current_tree[id].update({"geoms": [geom.attrs for geom in geoms]})
+    else:
+        id = parent_id
 
     for child in child_soups:
         current_tree.update(__unpack_node(child,
                                           current_tree=current_tree,
                                           parent_id=id,
                                           motor_names=motor_names,
-                                          foot_list=foot_list)
+                                          foot_list=foot_list,
+                                          drop_body_nodes=drop_body_nodes)
                             )
 
     return current_tree
@@ -278,7 +298,8 @@ def __get_motor_names(xml_soup: BeautifulSoup) -> List[str]:
 
 def __build_relation_matrix(tree: List[dict],
                             use_sibling_relations: bool,
-                            root_relation_option: RootRelationOption) -> np.ndarray:
+                            root_relation_option: RootRelationOption,
+                            drop_body_nodes: bool = False) -> np.ndarray:
     '''
     TODO better docstring
 
@@ -333,9 +354,10 @@ def __build_relation_matrix(tree: List[dict],
                           and node["type"] == "body"]
 
     # disconnect root with its children
-    for child_node_id in root_children_ids:
-        relation_matrix[child_node_id][0] = 0
-        relation_matrix[0][child_node_id] = 0
+    if not drop_body_nodes:
+        for child_node_id in root_children_ids:
+            relation_matrix[child_node_id][0] = 0
+            relation_matrix[0][child_node_id] = 0
 
     # connect root with its grand-children
     for grandchild_node in root_grandchildren:
@@ -437,7 +459,8 @@ def __get_output_mapping(tree: List[dict], controller_option: ControllerOption) 
     return output_type_dict, output_list
 
 
-def __get_input_mapping(task_name: str, tree: List[dict], embedding_option: EmbeddingOption) -> Tuple[dict, dict, dict]:
+def __get_input_mapping(task_name: str, tree: List[dict], embedding_option: EmbeddingOption, drop_body_nodes: bool) -> \
+        Tuple[dict, dict, dict]:
     '''
     Parameters:
         "tree":
@@ -471,7 +494,7 @@ def __get_input_mapping(task_name: str, tree: List[dict], embedding_option: Embe
 
     # this is how many observations we have for the root node
     # the observations for the joints follow after these
-    # TODO: varify that this can indeed be a constant
+    # TODO: verify that this can indeed be a constant
     _root_obs_size = 8
     _num_obs_per_joint = 2
     # we can immediately set the first observations to be used by the root node
@@ -499,6 +522,14 @@ def __get_input_mapping(task_name: str, tree: List[dict], embedding_option: Embe
     joints_obs_size = sum([len(obs_input_mapping[node["id"]])
                            for _, node in joints.items()])
 
+    if drop_body_nodes:
+        # if we are dropping body nodes, the "footness" of the body nodes was merged into the joints that replace the body nodes
+        # so we add the foot observations to the joints here
+        for joint_key, node in joints.items():
+            if node["is_foot"]:
+                # every foot has one boolean observation to tell whether the foot is on the ground
+                obs_input_mapping[node["id"]] += [_root_obs_size +
+                                                  joints_obs_size + node["foot_id"]]
     for _, node in bodies.items():
         # for pybullet envs there are no observations generated for body nodes
         # except the root observations

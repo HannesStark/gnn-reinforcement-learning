@@ -9,9 +9,9 @@ device: cpu
 total_timesteps: !!float 2e6
 n_envs: 1
 
-batch_size: 64
+batch_size: 256
 n_epochs: 10
-n_steps: 2048
+n_steps: 4048
 learning_rate: 0.0002
 
 # gamma: 0.99
