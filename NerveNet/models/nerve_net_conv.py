@@ -6,8 +6,8 @@ from torch import Tensor
 from torch import nn
 from torch.nn import Parameter
 from torch_sparse import SparseTensor, matmul
-from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.utils import add_remaining_self_loops
+from torch_geometric.nn.conv import MessagePassing, GatedGraphConv
+from torch_geometric.utils import add_remaining_self_loops, remove_self_loops
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from torch_geometric.typing import Adj, OptTensor, PairTensor
 
@@ -39,7 +39,6 @@ class NerveNetConv(MessagePassing):
                  in_channels: int,
                  out_channels: int,
                  update_masks: Dict[str, Tuple[List[int], int]],
-                 device: Union[torch.device, str] = "auto",
                  cached: bool = False,
                  bias: bool = True,
                  **kwargs):
@@ -126,3 +125,81 @@ class NerveNetConv(MessagePassing):
     def __repr__(self):
         return '{}({}, {})'.format(self.__class__.__name__, self.in_channels,
                                    self.out_channels)
+
+
+class NerveNetConv_v1(NerveNetConv):
+    """
+        A message passing schema for nervenet with "Ego- and Neighbor-embedding Separation" 
+        as described in "Beyond Homophily in Graph Neural Networks: Current Limitations and Effective Designs"
+    """
+
+    def forward(self, x: Tensor, edge_index: Adj,
+                edge_weight: OptTensor = None) -> Tensor:
+        """
+
+        """
+        # remove self loops, so we only aggregate neighbours and can add the ego features seperately
+        edge_index, _ = remove_self_loops(edge_index)
+
+        # propagate_type: (x: Tensor, edge_weight: OptTensor)
+        aggregated_neighbors = self.propagate(edge_index, x=x, edge_weight=edge_weight,
+                                              size=None)
+
+        # combine ego and aggregated neighbours
+        out = torch.cat([x, aggregated_neighbors], dim=-1)
+
+        return out
+
+
+class NerveNetConvGRU(GatedGraphConv):
+
+    def __init__(self,
+                 out_channels: int,
+                 num_layers: int,
+                 update_masks: Dict[str, Tuple[List[int], int]],
+                 aggr: str = 'add',
+                 bias: bool = True,
+                 **kwargs):
+
+        super(GatedGraphConv, self).__init__(aggr=aggr, **kwargs)
+
+        self.out_channels = out_channels
+        self.num_layers = num_layers
+
+        self.weight = Parameter(Tensor(num_layers, out_channels, out_channels))
+        self.rnn = torch.nn.GRUCell(out_channels, out_channels, bias=bias)
+
+        self.reset_parameters()
+
+    def forward(self, x: Tensor, edge_index: Adj,
+                edge_weight: OptTensor = None) -> Tensor:
+        """"""
+        batch_size = x.shape[0]
+        if x.size(-1) > self.out_channels:
+            raise ValueError('The number of input channels is not allowed to '
+                             'be larger than the number of output channels')
+
+        if x.size(-1) < self.out_channels:
+            zero = x.new_zeros(x.size(0), self.out_channels - x.size(-1))
+            x = torch.cat([x, zero], dim=1)
+
+        for i in range(self.num_layers):
+            m = torch.matmul(x, self.weight[i])
+            # propagate_type: (x: Tensor, edge_weight: OptTensor)
+            m = self.propagate(edge_index, x=m, edge_weight=edge_weight,
+                               size=None)
+            x = self.rnn(m.view(-1, self.out_channels), x.view(-1,
+                                                               self.out_channels)).view(batch_size, -1, self.out_channels)
+
+        return x
+
+    def message(self, x_j: Tensor, edge_weight: OptTensor):
+        return x_j
+
+    def message_and_aggregate(self, adj_t: SparseTensor, x: Tensor) -> Tensor:
+        return matmul(adj_t, x, reduce=self.aggr)
+
+    def __repr__(self):
+        return '{}({}, num_layers={})'.format(self.__class__.__name__,
+                                              self.out_channels,
+                                              self.num_layers)

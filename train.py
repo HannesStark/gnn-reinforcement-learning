@@ -120,6 +120,7 @@ def train(args):
     alg_kwargs.pop("drop_body_nodes", None)
     alg_kwargs.pop("use_sibling_relations", None)
     alg_kwargs.pop("experiment_name_suffix", None)
+    alg_kwargs.pop("action_per_controller", None)
 
     model = alg_class(args.policy,
                       env,
