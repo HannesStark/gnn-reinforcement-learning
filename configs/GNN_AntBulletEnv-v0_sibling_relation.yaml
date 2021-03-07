@@ -1,4 +1,4 @@
-experiment_name: split_readout_sibling_relation
+experiment_name: "tobifix_sibling"
 
 task_name: AntBulletEnv-v0
 alg: PPO
