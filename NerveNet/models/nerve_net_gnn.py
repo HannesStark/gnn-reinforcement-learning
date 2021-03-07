@@ -208,21 +208,33 @@ class NerveNetGNN(nn.Module):
             vf_net_dim = last_layer_dim_shared
         else:
             last_layer_dim_vf = self.info["num_nodes"] * \
-                self.last_layer_dim_input
+                                self.last_layer_dim_input
             vf_net_dim = self.last_layer_dim_input
 
-        self.policy_nets = nn.ModuleList()
-        for action_node_index in self.action_node_indices:
-            policy_net = nn.ModuleList()
-            policy_net_dim = last_layer_dim_shared
-            for layer_class, layer_size in net_arch["policy"]:
-                policy_net.append(layer_class(
-                    policy_net_dim, layer_size).to(self.device))
-                policy_net.append(activation_fn().to(self.device))
-                policy_net_dim = layer_size
-            # add mandatory linear layer that returns a scalar for each node
-            policy_net.append(nn.Linear(policy_net_dim, 1).to(self.device))
-            self.policy_nets.append(nn.Sequential(*policy_net).to(self.device))
+        # self.policy_nets = nn.ModuleList()
+        # for action_node_index in self.action_node_indices:
+        #    policy_net = nn.ModuleList()
+        #    policy_net_dim = last_layer_dim_shared
+        #    for layer_class, layer_size in net_arch["policy"]:
+        #        policy_net.append(layer_class(
+        #            policy_net_dim, layer_size).to(self.device))
+        #        policy_net.append(activation_fn().to(self.device))
+        #        policy_net_dim = layer_size
+        #    # add mandatory linear layer that returns a scalar for each node
+        #    policy_net.append(nn.Linear(policy_net_dim, 1).to(self.device))
+        #    self.policy_nets.append(nn.Sequential(*policy_net).to(self.device))
+
+        policy_net = nn.ModuleList()
+        policy_net_dim = last_layer_dim_shared
+        for layer_class, layer_size in net_arch["policy"]:
+            policy_net.append(layer_class(
+                policy_net_dim, layer_size).to(self.device))
+            policy_net.append(activation_fn().to(self.device))
+            policy_net_dim = layer_size
+        # add mandatory linear layer that returns a scalar for each nod
+        policy_net.append(nn.Linear(policy_net_dim, 1).to(self.device))
+        self.policy_net = nn.Sequential(*policy_net).to(self.device)
+
 
         for layer_class, layer_size in net_arch["value"]:
             value_net.append(layer_class(
@@ -298,7 +310,7 @@ class NerveNetGNN(nn.Module):
         # latent_vf = self.debug(self.flatten(pre_message_passing))
 
         action_nodes_embedding = policy_embedding[:, self.action_node_indices,
-                                                  :]  # [batchsize, number_action_nodes, features_dim]
+                                 :]  # [batchsize, number_action_nodes, features_dim]
         action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[
             -1])  # [batchsize * number_action_nodes, features_dim]
 
@@ -306,11 +318,12 @@ class NerveNetGNN(nn.Module):
         # flat_embedding = self.flatten(embedding)  # for debug network
         # latent_pi = self.debug(flat_embedding)  # [batch_size * number_nodes, features_dim]
         # [batch_size * number_nodes, 1]
-        latent_pis = []
-        for i, policy_net in enumerate(self.policy_nets):
-            latent_pi = policy_net(action_nodes_embedding[:, i, :])
-            latent_pis.append(latent_pi)
-        latent_pis = torch.cat(latent_pis, dim=-1)
-        # latent_pis = self.policy_net(action_nodes_embedding_flat) # [batch_size, number_nodes]
-        # latent_pis = latent_pis.view(-1, action_nodes_embedding.shape[1])
+
+        # latent_pis = []
+        # for i, policy_net in enumerate(self.policy_nets):
+        #    latent_pi = policy_net(action_nodes_embedding[:, i, :])
+        #    latent_pis.append(latent_pi)
+        # latent_pis = torch.cat(latent_pis, dim=-1)
+        latent_pis = self.policy_net(action_nodes_embedding_flat)  # [batch_size, number_nodes]
+        latent_pis = latent_pis.view(-1, action_nodes_embedding.shape[1])
         return latent_pis, latent_vf
