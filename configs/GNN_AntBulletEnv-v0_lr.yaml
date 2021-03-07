@@ -1,4 +1,4 @@
-experiment_name: split_readoutlower_lr
+experiment_name: split_readouthigher_lr
 
 task_name: AntBulletEnv-v0
 alg: PPO
