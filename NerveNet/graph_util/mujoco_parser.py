@@ -8,6 +8,7 @@
 import numpy as np
 import pybullet_data
 import pybullet_envs  # register pybullet envs from bullet3
+import os
 
 from pathlib import Path
 from enum import IntEnum, Enum
@@ -106,10 +107,20 @@ def parse_mujoco_graph(task_name: str = None,
 
     xml_path = xml_assets_path / xml_name
 
+    if not xml_path.is_file():
+        # try to find it in default pybullet data
+        xml_path = XML_ASSETS_DIR / xml_name
+
+        if not xml_path.is_file():
+            # try to find it in custom envs of this repo
+            xml_path = Path(os.getcwd()) / \
+                "NerveNet/gym_envs/assets" / xml_name
+
     with open(str(xml_path), "r") as xml_file:
         xml_soup = BeautifulSoup(xml_file.read(), "xml")
 
-    tree = __extract_tree(xml_soup, foot_list, absorb_root_joints, drop_body_nodes=drop_body_nodes)
+    tree = __extract_tree(xml_soup, foot_list,
+                          absorb_root_joints, drop_body_nodes=drop_body_nodes)
 
     relation_matrix = __build_relation_matrix(
         tree,
@@ -251,32 +262,34 @@ def __unpack_node(node: BeautifulSoup,
             child_soups.remove(child)
     node_type = node.name
 
-    if node_type != 'body' or not drop_body_nodes:
-        id = max(current_tree.keys()) + 1
-        current_tree[id] = {
-            "type": node_type,
-            "is_output_node": node["name"] in motor_names,
-            "is_foot": node["name"] in foot_list,
-            "raw_name": node["name"],
-            "name": node_type + "_" + node["name"],
-            "id": id,
-            "parent": parent_id,  # to be set later
-            "info": node.attrs
-        }
+    if "ignore" not in node["name"]:
+        if node_type != 'body' or not drop_body_nodes:
+            id = max(current_tree.keys()) + 1
+            current_tree[id] = {
+                "type": node_type,
+                "is_output_node": node["name"] in motor_names,
+                "is_foot": node["name"] in foot_list,
+                "raw_name": node["name"],
+                "name": node_type + "_" + node["name"],
+                "id": id,
+                "parent": parent_id,  # to be set later
+                "info": node.attrs
+            }
 
-        if drop_body_nodes:
-            if node['is_foot']:
-                current_tree[id]["is_foot"] = True
-                current_tree[id]["foot_id"] = node['foot_id']
+            if drop_body_nodes:
+                if node['is_foot']:
+                    current_tree[id]["is_foot"] = True
+                    current_tree[id]["foot_id"] = node['foot_id']
+            else:
+                if current_tree[id]["is_foot"]:
+                    current_tree[id]["foot_id"] = foot_list.index(node["name"])
+
+            if current_tree[id]["type"] == "body":
+                geoms = node.find_all('geom', recursive=False)
+                current_tree[id].update(
+                    {"geoms": [geom.attrs for geom in geoms]})
         else:
-            if current_tree[id]["is_foot"]:
-                current_tree[id]["foot_id"] = foot_list.index(node["name"])
-
-        if current_tree[id]["type"] == "body":
-            geoms = node.find_all('geom', recursive=False)
-            current_tree[id].update({"geoms": [geom.attrs for geom in geoms]})
-    else:
-        id = parent_id
+            id = parent_id
 
     for child in child_soups:
         current_tree.update(__unpack_node(child,
@@ -423,16 +436,11 @@ def __get_output_mapping(tree: List[dict], controller_option: ControllerOption) 
         "output_list": list[str]
             The list of all output nodes in the order
     '''
-
-    # we need to use the exact same order as motors are defined in the xml
-    # --> names in the correct order are in root node
-    # --> indexing first improves sorting afterwards
-    motor_index_map = {v: i for i, v in enumerate(tree[0]["motor_names"])}
-
+    # The order of the output nodes is defined not by the order of the actuators/motors section in the xml file,
+    # but instead by the order in which the joints first appear in the xml file.
+    # Hence it is already given by the order the nodes have in the tree variable
     output_nodes = {node["raw_name"]: node
                     for node in tree if node["is_output_node"]}
-    output_nodes = dict(sorted(output_nodes.items(),
-                               key=lambda pair: motor_index_map[pair[0]]))
 
     output_list = [node["id"] for node in output_nodes.values()]
 
