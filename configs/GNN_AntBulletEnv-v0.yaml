@@ -1,4 +1,4 @@
-experiment_name: nenvs_standard
+experiment_name: split_readout
 
 task_name: AntBulletEnv-v0
 alg: PPO
