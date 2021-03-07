@@ -16,6 +16,7 @@ from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import MlpPolicy
 from stable_baselines3.common.evaluation import evaluate_policy
 
+import pybullet_data
 import pybullet_envs  # register pybullet envs from bullet3
 
 from NerveNet.policies import register_policies
@@ -52,8 +53,29 @@ def init_evaluate(args):
 
     alg_kwargs = dict()
     policy_kwargs = dict()
-    policy_kwargs['transfered_policy'] = model_old.policy
+    policy_kwargs['base_policy'] = model_old.policy
     policy_kwargs['net_arch'] = net_arch
+    policy_kwargs['base_env_task_name'] = train_arguments["task_name"]
+    policy_kwargs['base_env_xml_assets_path'] = Path(
+        train_arguments["xml_assets_path"])
+
+    # if the base environment was trained on a another system, this path might be wrong.
+    # we can't easily fix this in general...
+    # but in case it is just the default path to the pybullet_data we can
+    base_xml_path_parts = policy_kwargs['base_env_xml_assets_path'].parents._parts
+    if "pybullet_data" in base_xml_path_parts:
+        policy_kwargs['base_env_xml_assets_path'] = Path(
+            pybullet_data.getDataPath()) / "mjcf"
+    # also in case it is relative to the repository's root we can:
+    if "tum-adlr-ws21-04" in base_xml_path_parts:
+        relative_parts_offset = base_xml_path_parts.index("tum-adlr-ws21-04")
+        relative_parts = base_xml_path_parts[relative_parts_offset:]
+        # assuming the working directory is the tum-adlr-ws21-04 repository root
+        policy_kwargs['base_env_xml_assets_path'] = Path(
+            os.getcwd()) / "/".join(relative_parts)
+
+    policy_kwargs['transfer_env_task_name'] = args.transfer_env
+    policy_kwargs['transfer_env_xml_assets_path'] = args.xml_assets_path
 
     if "activation_fn" in train_arguments:
         if train_arguments["activation_fn"] is not None:
@@ -135,12 +157,18 @@ def parse_arguments():
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",
                    type=int,
-                   default=1)
+                   default=10)
 
     p.add_argument("--transfer_env",
                    help="The environment the model should be transfered to",
                    type=str,
-                   default="AntBulletEnv-v0")
+                   default="AntSixLegsEnv-v0")
+
+    p.add_argument('--xml_assets_path',
+                   help="The path to the directory where the xml of the transfer task's robot is defined",
+                   type=dir_path,
+                   # default=Path(pybullet_data.getDataPath()) / "mjcf")
+                   default=Path(os.getcwd()) / "NerveNet/gym_envs/assets")
 
     p.add_argument('--render',
                    help='Whether to render the evaluation with pybullet client',
