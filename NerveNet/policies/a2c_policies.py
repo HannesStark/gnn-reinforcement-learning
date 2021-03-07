@@ -118,6 +118,7 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
             optimizer_class=optimizer_class,
             optimizer_kwargs=optimizer_kwargs,
         )
+        self.action_net = torch.nn.Identity()
 
     @property
     def device(self) -> torch.device:

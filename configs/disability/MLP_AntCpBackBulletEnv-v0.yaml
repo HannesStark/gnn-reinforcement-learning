@@ -1,3 +1,4 @@
+experiment_name: MLP_PPO_pi64_64_vf64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_sharedEpochs_10_Nenvs_1_hpt_relu_gamma90
 task_name: AntCpBackBulletEnv-v0
 alg: PPO
 policy: MlpPolicy
@@ -12,11 +13,20 @@ n_epochs: 10
 n_steps: 2048
 learning_rate: 0.0002
 
+gamma: 0.9
+gae_lambda: 0.9
+ent_coef: 0.0
+sde_sample_freq: 4
+max_grad_norm: 0.5
+vf_coef: 0.5
+use_sde: True
+clip_range: 0.4
+activation_fn: ReLU
 
 net_arch:
   - pi:
-      - 256
-      - 256
+      - 64
+      - 64
     vf:
-      - 256
-      - 256
+      - 64
+      - 64

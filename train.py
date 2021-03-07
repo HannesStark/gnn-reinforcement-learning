@@ -216,6 +216,10 @@ def parse_arguments():
     p.add_argument('--experiment_name',
                    help='name to append to the tensorboard logs directory',
                    default=None)
+    p.add_argument('--experiment_name_suffix',
+                   help='name to append to the tensorboard logs directory',
+                   default=None)
+
     p.add_argument('--model_name',
                    help='The name of your saved model',
                    default='model.zip')
@@ -258,6 +262,8 @@ def parse_arguments():
         args.experiment_name = f"{policy_abbrv}_{args.alg}{net_arch_desc}_N{args.n_steps}_B{args.batch_size}_"
         args.experiment_name += f"lr{args.learning_rate:.0e}_GNNValue_{args.gnn_for_values:0d}_EmbOpt_{args.embedding_option}"
         args.experiment_name += f"Epochs_{args.n_epochs}_Nenvs_{args.n_envs}"
+        if args.experiment_name_suffix is not None:
+            args.experiment_name += f"_{args.experiment_name_suffix}"
 
     return args
 

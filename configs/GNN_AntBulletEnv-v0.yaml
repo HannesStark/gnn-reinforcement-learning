@@ -1,4 +1,4 @@
-experiment_name: split_readout
+#experiment_name: split_readout
 
 task_name: AntBulletEnv-v0
 alg: PPO
@@ -13,8 +13,8 @@ learning_rate: 1.0e-4
 
 total_timesteps: !!float 2e6
 n_envs: 4
-n_steps: 1000
-batch_size: 256
+n_steps: 2048
+batch_size: 64
 activation_fn: Tanh
 
 net_arch: 

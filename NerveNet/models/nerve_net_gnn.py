@@ -97,10 +97,7 @@ class NerveNetGNN(nn.Module):
                                        xml_assets_path=self.xml_assets_path,
                                        embedding_option=embedding_option)
 
-        self.action_node_indices = []
-        for i, node in enumerate(self.info['tree']):
-            if node['is_output_node']:
-                self.action_node_indices.append(i)
+        self.action_node_indices = self.info['output_list']
 
         self.info["static_input_mapping"] = {}
         # Notes on edge attributes:
@@ -211,7 +208,7 @@ class NerveNetGNN(nn.Module):
             vf_net_dim = last_layer_dim_shared
         else:
             last_layer_dim_vf = self.info["num_nodes"] * \
-                                self.last_layer_dim_input
+                self.last_layer_dim_input
             vf_net_dim = self.last_layer_dim_input
 
         self.policy_nets = nn.ModuleList()
@@ -245,20 +242,6 @@ class NerveNetGNN(nn.Module):
         self.gnn_values = gnn_values
         self.flatten = nn.Flatten()
         self.value_net = nn.Sequential(*value_net).to(self.device)
-
-        self.debug = nn.Sequential(
-            nn.Linear(last_layer_dim_pi, 16),
-            activation_fn(),
-            nn.Linear(16, 16),
-            activation_fn()
-        )
-
-        self.debug2 = nn.Sequential(
-            nn.Linear(last_layer_dim_vf, 16),
-            activation_fn(),
-            nn.Linear(16, 16),
-            activation_fn()
-        )
 
     def forward(self, observations: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -315,7 +298,7 @@ class NerveNetGNN(nn.Module):
         # latent_vf = self.debug(self.flatten(pre_message_passing))
 
         action_nodes_embedding = policy_embedding[:, self.action_node_indices,
-                                 :]  # [batchsize, number_action_nodes, features_dim]
+                                                  :]  # [batchsize, number_action_nodes, features_dim]
         action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[
             -1])  # [batchsize * number_action_nodes, features_dim]
 
