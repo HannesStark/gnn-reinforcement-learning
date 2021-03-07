@@ -1,4 +1,4 @@
-experiment_name: nenvs_standard
+experiment_name: more_propagation
 
 task_name: AntBulletEnv-v0
 alg: PPO
@@ -21,6 +21,8 @@ net_arch:
   input:
     - [Linear, 16]
   propagate:
+    - [NerveNetConv, 32]
+    - [NerveNetConv, 32]
     - [NerveNetConv, 32]
     - [NerveNetConv, 32]
     - [NerveNetConv, 32]
