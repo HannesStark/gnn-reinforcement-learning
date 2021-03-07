@@ -14,7 +14,7 @@ from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
 from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption, RootRelationOption
 from NerveNet.graph_util.observation_mapper import get_update_masks, observations_to_node_attributes, \
     relation_matrix_to_adjacency_matrix, get_static_node_attributes
-from NerveNet.models.nerve_net_conv import NerveNetConv, NerveNetConv_v1, NerveNetConvGRU
+from NerveNet.models.nerve_net_conv import NerveNetConv, NerveNetConv_v1, NerveNetConvGRU, NerveNetConvGAT
 
 
 class NerveNetGNN(nn.Module):
@@ -183,6 +183,15 @@ class NerveNetGNN(nn.Module):
                                               self.update_masks).to(self.device))
                 gnn_policy.append(layer_class(*layer_size,
                                               self.update_masks).to(self.device))
+            elif layer_class == NerveNetConvGAT:
+                gnn_values.append(layer_class(last_layer_dim_shared,
+                                              *layer_size[:],
+                                              # we already added self_loops ourselves
+                                              add_self_loops=False).to(self.device))
+                gnn_policy.append(layer_class(last_layer_dim_shared,
+                                              *layer_size[:],
+                                              # we already added self_loops ourselves
+                                              add_self_loops=False).to(self.device))
 
             elif issubclass(layer_class, GCNConv):
                 # for GCN Conv we need an additional parameter for the constructor
@@ -206,6 +215,8 @@ class NerveNetGNN(nn.Module):
                 last_layer_dim_shared = last_layer_dim_shared + layer_size
             elif layer_class == NerveNetConvGRU:
                 last_layer_dim_shared = layer_size[0]
+            elif layer_class == NerveNetConvGAT:
+                last_layer_dim_shared = layer_size[0] * layer_size[1]
             else:
                 last_layer_dim_shared = layer_size
 
@@ -295,7 +306,15 @@ class NerveNetGNN(nn.Module):
 
         policy_embedding = embedding
         for layer in self.gnn_policy:
-            if isinstance(layer, MessagePassing):
+            if isinstance(layer, NerveNetConvGAT):
+                # GATs don't support batched input...
+                # for i in range(embedding.shape[0]):
+                #     policy_embedding[[i], :, :] = layer(
+                #         policy_embedding[i], self.edge_index).to(self.device)
+                policy_embedding = layer(
+                    policy_embedding, self.edge_index).to(self.device)
+
+            elif isinstance(layer, MessagePassing):
                 policy_embedding = layer(policy_embedding, self.edge_index,
                                          self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
             else:
@@ -304,7 +323,15 @@ class NerveNetGNN(nn.Module):
 
         value_embedding = embedding
         for layer in self.gnn_values:
-            if isinstance(layer, MessagePassing):
+            if isinstance(layer, NerveNetConvGAT):
+                # GATs don't support batched input...
+                # for i in range(embedding.shape[0]):
+                #     value_embedding[[i], :, :] = layer(
+                #         value_embedding[i], self.edge_index).to(self.device)
+                value_embedding = layer(
+                    value_embedding, self.edge_index).to(self.device)
+
+            elif isinstance(layer, MessagePassing):
                 value_embedding = layer(value_embedding, self.edge_index,
                                         self.update_masks).to(self.device)  # [batch_size, number_nodes, features_dim]
             else:
