@@ -27,10 +27,11 @@ class NerveNetGNN(nn.Module):
     """
 
     def __init__(self,
+                 observation_dim: int,
                  net_arch: Dict[str, List[Tuple[nn.Module, int]]],
                  activation_fn: Type[nn.Module],
                  gnn_for_values=False,
-                 action_per_controller=True,
+                 policy_readout_mode='pooled',
                  use_sibling_relations: bool = False,
                  drop_body_nodes: bool = True,
                  embedding_option=EmbeddingOption.SHARED,
@@ -83,13 +84,13 @@ class NerveNetGNN(nn.Module):
                 }
         '''
         super(NerveNetGNN, self).__init__()
-
+        self.observation_dim = observation_dim
         self.task_name = task_name
         self.xml_name = xml_name
         self.xml_assets_path = xml_assets_path
         self.device = get_device(device)
         self.gnn_for_values = gnn_for_values
-        self.action_per_controller = action_per_controller
+        self.policy_readout_mode = policy_readout_mode
 
         self.info = parse_mujoco_graph(task_name=self.task_name,
                                        xml_name=self.xml_name,
@@ -223,14 +224,11 @@ class NerveNetGNN(nn.Module):
         # Build the non-shared part of the network
 
         if self.gnn_for_values:
-            last_layer_dim_vf = self.info["num_nodes"] * last_layer_dim_shared
             vf_net_dim = last_layer_dim_shared
         else:
-            last_layer_dim_vf = self.info["num_nodes"] * \
-                self.last_layer_dim_input
-            vf_net_dim = last_layer_dim_vf  # self.last_layer_dim_input
+            vf_net_dim = self.observation_dim
 
-        if not self.action_per_controller:
+        if self.policy_readout_mode == 'flattened':
             # use the features of all nodes to generate an action, not just the features of the controller node
             # in the shared network we use GCN convolutions,
             # which means last_layer_dim_shared is the number of
@@ -238,24 +236,36 @@ class NerveNetGNN(nn.Module):
             last_layer_dim_shared = self.info["num_nodes"] * \
                 last_layer_dim_shared
 
-        self.policy_nets = dict()
-        for out_group_name, out_node_idx in self.info["output_type_dict"].items():
+        if self.policy_readout_mode == 'pooled' or self.policy_readout_mode == 'pooled_by_group':
             policy_net = nn.ModuleList()
-            policy_net_dim = last_layer_dim_shared
+            policy_net_dim = 2 * last_layer_dim_shared if self.policy_readout_mode == 'pooled_by_group' else last_layer_dim_shared
             for layer_class, layer_size in net_arch["policy"]:
                 policy_net.append(layer_class(
                     policy_net_dim, layer_size).to(self.device))
                 policy_net.append(activation_fn().to(self.device))
                 policy_net_dim = layer_size
-            # add mandatory linear layer that returns a scalar for each node
-            if self.action_per_controller:
-                policy_net.append(nn.Linear(policy_net_dim, 1).to(self.device))
-            else:
-                policy_net.append(
-                    nn.Linear(policy_net_dim, len(out_node_idx)).to(self.device))
+            # add mandatory linear layer that returns a scalar for the pooled embeddings
+            policy_net.append(nn.Linear(policy_net_dim, len(self.action_node_indices)).to(self.device))
+            self.policy_net = nn.Sequential(*policy_net).to(self.device)
+        else:
+            self.policy_nets = dict()
+            for out_group_name, out_node_idx in self.info["output_type_dict"].items():
+                policy_net = nn.ModuleList()
+                policy_net_dim = last_layer_dim_shared
+                for layer_class, layer_size in net_arch["policy"]:
+                    policy_net.append(layer_class(
+                        policy_net_dim, layer_size).to(self.device))
+                    policy_net.append(activation_fn().to(self.device))
+                    policy_net_dim = layer_size
+                # add mandatory linear layer that returns a scalar for each node
+                if self.policy_readout_mode == 'action_per_controller':
+                    policy_net.append(nn.Linear(policy_net_dim, 1).to(self.device))
+                else:
+                    policy_net.append(
+                        nn.Linear(policy_net_dim, len(out_node_idx)).to(self.device))
 
-            self.policy_nets[out_group_name] = nn.Sequential(
-                *policy_net).to(self.device)
+                self.policy_nets[out_group_name] = nn.Sequential(
+                    *policy_net).to(self.device)
 
         for layer_class, layer_size in net_arch["value"]:
             value_net.append(layer_class(
@@ -339,37 +349,43 @@ class NerveNetGNN(nn.Module):
                 value_embedding = layer(value_embedding).to(self.device)
 
         if self.gnn_for_values:
-            pooled_embedding = torch.mean(value_embedding, dim=1)
+            pooled_value_embedding = torch.mean(value_embedding, dim=1)
         else:
-            pooled_embedding = self.flatten(pre_message_passing)
+            pooled_value_embedding = observations
 
-        latent_vf = self.value_net(pooled_embedding)
-        # latent_vf = self.debug(self.flatten(pre_message_passing))
+        latent_vf = self.value_net(pooled_value_embedding)
 
         action_nodes_embedding = policy_embedding[:, self.action_node_indices,
                                                   :]  # [batchsize, number_action_nodes, features_dim]
         action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[
             -1])  # [batchsize * number_action_nodes, features_dim]
 
-        # for debugging
-        # flat_embedding = self.flatten(embedding)  # for debug network
-        # latent_pi = self.debug(flat_embedding)  # [batch_size * number_nodes, features_dim]
-        # [batch_size * number_nodes, 1]
-
         latent_pis = torch.zeros(
             *observations.shape[:-1], len(self.action_node_indices))
-        for out_group_name, out_node_idx in self.info["output_type_dict"].items():
-            policy_net = self.policy_nets[out_group_name]
-            if self.action_per_controller:
-                for i in out_node_idx:
-                    latent_pis[:, self.action_node_indices.index(i)] = policy_net(
-                        action_nodes_embedding[:, self.action_node_indices.index(i), :]).view(*observations.shape[:-1])
-            else:
-                out_idx = [self.action_node_indices.index(
-                    i) for i in out_node_idx]
-                # input to policy_net is [batch_size, num_nodes * num_features ]
-                latent_pis[:, out_idx] = policy_net(
-                    policy_embedding.view(observations.shape[0], -1))
+        if self.policy_readout_mode == 'pooled':
+            pooled_policy_embedding = action_nodes_embedding.mean(dim=1)
+            latent_pis = self.policy_net(pooled_policy_embedding)
+        elif self.policy_readout_mode == 'pooled_by_group':
+            ankle_indices = np.array(self.info["output_type_dict"]['ankle']) - 1
+            hip_indices = np.array(self.info["output_type_dict"]['hip']) - 1
+            ankle = action_nodes_embedding[:, ankle_indices, :].mean(dim=1)
+            hips = action_nodes_embedding[:, hip_indices, :].mean(dim=1)
+            pooled_embeddings = torch.cat([ankle, hips], dim=-1)
+            latent_pis = self.policy_net(pooled_embeddings)
+        else:
+            for out_group_name, out_node_idx in self.info["output_type_dict"].items():
+                policy_net = self.policy_nets[out_group_name]
+                if self.policy_readout_mode == 'action_per_controller':
+                    for i in out_node_idx:
+                        latent_pis[:, self.action_node_indices.index(i)] = policy_net(
+                            action_nodes_embedding[:, self.action_node_indices.index(i), :]).view(
+                            *observations.shape[:-1])
+                else:
+                    out_idx = [self.action_node_indices.index(
+                        i) for i in out_node_idx]
+                    # input to policy_net is [batch_size, num_nodes * num_features ]
+                    latent_pis[:, out_idx] = policy_net(
+                        policy_embedding.view(observations.shape[0], -1))
 
         # latent_pis = self.policy_net(action_nodes_embedding_flat) # [batch_size, number_nodes]
         # latent_pis = latent_pis.view(-1, action_nodes_embedding.shape[1])

@@ -12,7 +12,7 @@ action_per_controller: False
 gnn_for_values: False
 learning_rate: 2.0e-4
 
-total_timesteps: !!float 1e6
+total_timesteps: !!float 2e6
 n_envs: 1
 n_steps: 2048
 batch_size: 64

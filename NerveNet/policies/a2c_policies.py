@@ -138,7 +138,7 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         """
         Create the policy and value networks.
         """
-        self.mlp_extractor = self.mlp_extractor_class(net_arch=self.net_arch, activation_fn=self.activation_fn,
+        self.mlp_extractor = self.mlp_extractor_class(self.features_dim, net_arch=self.net_arch, activation_fn=self.activation_fn,
                                                       **self.mlp_extractor_kwargs
                                                       )
 

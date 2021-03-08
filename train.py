@@ -100,6 +100,7 @@ def train(args):
             'drop_body_nodes': args.drop_body_nodes,
             'use_sibling_relations': args.use_sibling_relations,
             'xml_assets_path': args.xml_assets_path,
+            'policy_readout_mode': args.policy_readout_mode
         }
     alg_kwargs = args.__dict__.copy()
     alg_kwargs.pop("config", None)
@@ -119,7 +120,7 @@ def train(args):
     alg_kwargs.pop("drop_body_nodes", None)
     alg_kwargs.pop("use_sibling_relations", None)
     alg_kwargs.pop("experiment_name_suffix", None)
-    alg_kwargs.pop("action_per_controller", None)
+    alg_kwargs.pop("policy_readout_mode", None)
 
     model = alg_class(args.policy,
                       env,
@@ -194,6 +195,9 @@ def parse_arguments():
                    type=bool,
                    help='whether or not to use the GNN for the value function',
                    default=False)
+    p.add_argument('--policy_readout_mode',
+                   help='what type of readout net to use.',
+                   choices=["action_per_controller", "pooled", "pooled_by_group", "flattened"])
     p.add_argument('--activation_fn',
                    help='Activation function of the policy and value networks.',
                    choices=["Tanh", "ReLU"])
