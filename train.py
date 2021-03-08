@@ -63,7 +63,7 @@ def train(args):
     env = make_vec_env(args.task_name, n_envs=n_envs)
 
     # define network architecture
-    if args.policy == "GnnPolicy" and args.net_arch is not None:
+    if "GnnPolicy" in args.policy and args.net_arch is not None:
         for net_arch_part in args.net_arch.keys():
             for i, (layer_class_name, layer_size) in enumerate(args.net_arch[net_arch_part]):
                 if hasattr(nn, layer_class_name):
@@ -91,8 +91,7 @@ def train(args):
     if args.activation_fn is not None:
         policy_kwargs["activation_fn"] = activation_functions[args.activation_fn]
     # policy_kwargs['device'] = args.device if args.device is not None else get_device('auto')
-
-    if args.policy == "GnnPolicy":
+    if "GnnPolicy" in args.policy:
         policy_kwargs["mlp_extractor_kwargs"] = {
             "task_name": args.task_name,
             'device': args.device,
@@ -157,7 +156,7 @@ def parse_arguments():
                    choices=["A2C", "PPO"])
     p.add_argument('--policy',
                    help='The type of model to use.',
-                   choices=["GnnPolicy", "MlpPolicy"])
+                   choices=["GnnPolicy", "GnnPolicy_V0", "MlpPolicy"])
     p.add_argument("--total_timesteps",
                    help="The total number of samples (env steps) to train on",
                    type=int,

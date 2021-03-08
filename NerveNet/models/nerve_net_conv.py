@@ -12,7 +12,7 @@ from torch_geometric.utils import add_remaining_self_loops, remove_self_loops
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from torch_geometric.typing import Adj, OptTensor, PairTensor
 
-from NerveNet.models.utils import glorot, zeros
+from NerveNet.models.utils import glorot, zeros, uniform
 
 
 class NerveNetConv(MessagePassing):
@@ -167,11 +167,20 @@ class NerveNetConvGRU(GatedGraphConv):
 
         self.out_channels = out_channels
         self.num_layers = num_layers
+        self.update_masks = update_masks
 
-        self.weight = Parameter(Tensor(num_layers, out_channels, out_channels))
-        self.rnn = torch.nn.GRUCell(out_channels, out_channels, bias=bias)
+        #self.weight = Parameter(Tensor(num_layers, out_channels, out_channels))
+        self.rnns = dict()
+        for group_name, (update_mask, _) in self.update_masks.items():
+            self.rnns[group_name] = torch.nn.GRUCell(
+                out_channels, out_channels, bias=bias)
 
         self.reset_parameters()
+
+    def reset_parameters(self):
+        #uniform(self.out_channels, self.weight)
+        for group_name, (update_mask, _) in self.update_masks.items():
+            self.rnns[group_name].reset_parameters()
 
     def forward(self, x: Tensor, edge_index: Adj,
                 edge_weight: OptTensor = None) -> Tensor:
@@ -186,12 +195,22 @@ class NerveNetConvGRU(GatedGraphConv):
             x = torch.cat([x, zero], dim=1)
 
         for i in range(self.num_layers):
-            m = torch.matmul(x, self.weight[i])
-            # propagate_type: (x: Tensor, edge_weight: OptTensor)
+            #m = torch.matmul(x, self.weight[i])
+            # according to the original nervenet paper, no layer here
+            m = x
             m = self.propagate(edge_index, x=m, edge_weight=edge_weight,
                                size=None)
-            x = self.rnn(m.view(-1, self.out_channels), x.view(-1,
-                                                               self.out_channels)).view(batch_size, -1, self.out_channels)
+
+            # use x_next to get arround the "no gradient for inplace operation" error we get when trying to directly update x
+            x_next = torch.zeros_like(x)
+            for group_name, (update_mask, _) in self.update_masks.items():
+
+                x_group = x[:, update_mask]
+                m_group = m[:, update_mask]
+
+                x_next[:, update_mask] += self.rnns[group_name](m_group.view(-1, self.out_channels),
+                                                                x_group.view(-1, self.out_channels)).view(batch_size, -1, self.out_channels)
+            x = x_next
 
         return x
 

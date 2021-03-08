@@ -19,7 +19,7 @@ from stable_baselines3.common.type_aliases import Schedule
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
 from stable_baselines3.common.utils import get_device
-from NerveNet.models.nerve_net_gnn import NerveNetGNN
+from NerveNet.models.nerve_net_gnn import NerveNetGNN, NerveNetGNN_V0
 from NerveNet.models.nerve_net_conv import NerveNetConv
 from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
 
@@ -138,7 +138,7 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         """
         Create the policy and value networks.
         """
-        self.mlp_extractor = self.mlp_extractor_class(net_arch=self.net_arch, activation_fn=self.activation_fn,
+        self.mlp_extractor = self.mlp_extractor_class(self.features_dim, net_arch=self.net_arch, activation_fn=self.activation_fn,
                                                       **self.mlp_extractor_kwargs
                                                       )
 
@@ -219,6 +219,21 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
             return self.action_dist.proba_distribution(mean_actions, self.log_std, latent_sde)
         else:
             raise ValueError("Invalid action distribution")
+
+
+class ActorCriticGnnPolicy_V0(ActorCriticGnnPolicy):
+    def __init__(
+            self,
+            *args,
+            **kwargs
+    ):
+        if "mlp_extractor_class" in kwargs.keys():
+            kwargs.pop("mlp_extractor_class")
+        super(ActorCriticGnnPolicy_V0, self).__init__(
+            *args,
+            mlp_extractor_class=NerveNetGNN_V0,
+            **kwargs
+        )
 
 
 class ActorCriticMLPPolicyTransfer(ActorCriticPolicy):

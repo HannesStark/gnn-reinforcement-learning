@@ -1,5 +1,5 @@
 #experiment_name: split_readout
-experiment_name_suffix: "flattened_value_input"
+#experiment_name_suffix: ""
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
@@ -15,7 +15,7 @@ policy_readout_mode: 'pooled_by_group'
 gnn_for_values: False
 learning_rate: 2.0e-4
 
-total_timesteps: !!float 1e6
+total_timesteps: !!float 2e6
 n_envs: 1
 n_steps: 2048
 batch_size: 64
@@ -23,12 +23,14 @@ activation_fn: Tanh
 
 net_arch: 
   input:
-    - [Linear, 16]
+    - [Linear, 6]
   propagate:
-    - [NerveNetConv, 8]
-    - [NerveNetConv, 8]
-    - [NerveNetConv, 8]
-    - [NerveNetConv, 8]
+    - [NerveNetConv, 4]
+    - [NerveNetConv, 4]
+    - [NerveNetConv, 4]
+    - [NerveNetConv, 4]
+    - [NerveNetConv, 4]
+    - [NerveNetConv, 4]
   policy:
     - [Linear, 12]
     - [Linear, 12]
