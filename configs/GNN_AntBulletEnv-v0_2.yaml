@@ -1,5 +1,5 @@
 
-experiment_name_suffix: "16"
+experiment_name_suffix: "higher lr"
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
@@ -9,7 +9,7 @@ device: cpu
 drop_body_nodes: True
 use_sibling_relations: False
 gnn_for_values: True
-learning_rate: 2.0e-4
+learning_rate: 4.0e-4
 
 total_timesteps: !!float 2e6
 n_envs: 1
