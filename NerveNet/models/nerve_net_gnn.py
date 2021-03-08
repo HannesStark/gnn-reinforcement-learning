@@ -240,16 +240,14 @@ class NerveNetGNN(nn.Module):
 
         if self.policy_readout_mode == 'pooled' or self.policy_readout_mode == 'pooled_by_group':
             policy_net = nn.ModuleList()
-            policy_net_dim = last_layer_dim_shared
+            policy_net_dim = 2 * last_layer_dim_shared if self.policy_readout_mode == 'pooled_by_group' else last_layer_dim_shared
             for layer_class, layer_size in net_arch["policy"]:
                 policy_net.append(layer_class(
                     policy_net_dim, layer_size).to(self.device))
                 policy_net.append(activation_fn().to(self.device))
                 policy_net_dim = layer_size
             # add mandatory linear layer that returns a scalar for the pooled embeddings
-            output_dim = 3 * len(
-                self.action_node_indices) if self.policy_readout_mode == 'pooled_by_group' else self.action_node_indices
-            policy_net.append(nn.Linear(policy_net_dim, len(output_dim)).to(self.device))
+            policy_net.append(nn.Linear(policy_net_dim, len(self.action_node_indices)).to(self.device))
             self.policy_net = nn.Sequential(*policy_net).to(self.device)
         else:
             self.policy_nets = dict()
@@ -372,11 +370,11 @@ class NerveNetGNN(nn.Module):
             print(pooled_policy_embedding.shape)
             latent_pis = self.policy_net(pooled_policy_embedding)
         elif self.policy_readout_mode == 'pooled_by_group':
-            root = action_nodes_embedding
-            feet = action_nodes_embedding
-            hips = action_nodes_embedding
-
-            pooled_embeddings = torch.cat([root, feet, hips], dim=-1)
+            ankle_indices = np.array(self.info["output_type_dict"]['ankle']) - 1
+            hip_indices = np.array(self.info["output_type_dict"]['hip']) - 1
+            ankle = action_nodes_embedding[:, ankle_indices, :].mean(dim=1)
+            hips = action_nodes_embedding[:, hip_indices, :].mean(dim=1)
+            pooled_embeddings = torch.cat([ankle, hips], dim=-1)
             latent_pis = self.policy_net(pooled_embeddings)
         else:
             for out_group_name, out_node_idx in self.info["output_type_dict"].items():
