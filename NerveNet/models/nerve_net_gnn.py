@@ -363,9 +363,7 @@ class NerveNetGNN(nn.Module):
         latent_pis = torch.zeros(
             *observations.shape[:-1], len(self.action_node_indices))
         if self.policy_readout_mode == 'pooled':
-            print(action_nodes_embedding.shape)
             pooled_policy_embedding = action_nodes_embedding.mean(dim=1)
-            print(pooled_policy_embedding.shape)
             latent_pis = self.policy_net(pooled_policy_embedding)
         elif self.policy_readout_mode == 'pooled_by_group':
             ankle_indices = np.array(self.info["output_type_dict"]['ankle']) - 1

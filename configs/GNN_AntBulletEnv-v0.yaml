@@ -10,7 +10,7 @@ drop_body_nodes: True
 use_sibling_relations: False
 
 # ["action_per_controller", "pooled", "pooled_by_group", "flattened"]
-policy_readout_mode: 'pooled_by_group'
+policy_readout_mode: 'pooled'
 
 gnn_for_values: False
 learning_rate: 2.0e-4
