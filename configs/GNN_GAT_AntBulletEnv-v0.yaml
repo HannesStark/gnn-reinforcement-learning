@@ -1,5 +1,5 @@
 #experiment_name: split_readout
-experiment_name_suffix: "flattened_value_input"
+experiment_name_suffix: "GAT"
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
@@ -7,7 +7,7 @@ policy: GnnPolicy
 device: cpu
 
 drop_body_nodes: True
-use_sibling_relations: True
+use_sibling_relations: False
 action_per_controller: False
 gnn_for_values: False
 learning_rate: 2.0e-4
@@ -22,13 +22,12 @@ net_arch:
   input:
     - [Linear, 16]
   propagate:
-    - [NerveNetConv_v1, 8]
-    - [NerveNetConv_v1, 8]
-    - [NerveNetConv_v1, 8]
-    - [NerveNetConv_v1, 8]
+    - [NerveNetConvGAT, [16, 1]] # out x num_heads
+    - [NerveNetConvGAT, [16, 1]] # out x num_heads
+    - [NerveNetConvGAT, [16, 1]] # out x num_heads
+    - [NerveNetConvGAT, [16, 1]] # out x num_heads
   policy:
-    - [Linear, 12]
-    - [Linear, 12]
+    - [Linear, 64]
   value:
-    - [Linear, 12]
-    - [Linear, 12]
+    - [Linear, 64]
+    - [Linear, 64]

@@ -120,6 +120,7 @@ def train(args):
     alg_kwargs.pop("drop_body_nodes", None)
     alg_kwargs.pop("use_sibling_relations", None)
     alg_kwargs.pop("experiment_name_suffix", None)
+    alg_kwargs.pop("action_per_controller", None)
 
     model = alg_class(args.policy,
                       env,
@@ -249,6 +250,8 @@ def parse_arguments():
             for net_arch_part in args.net_arch.keys():
                 net_arch_desc += "_" + net_arch_part[:3]
                 for i, (layer_class_name, layer_size) in enumerate(args.net_arch[net_arch_part]):
+                    if isinstance(layer_size, list):
+                        layer_size = "".join([str(i) for i in layer_size])
                     net_arch_desc += f"_{layer_size}"
         elif isinstance(args.net_arch, list):
             for net_arch_info in args.net_arch:
