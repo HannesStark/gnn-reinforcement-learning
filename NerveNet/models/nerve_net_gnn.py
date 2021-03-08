@@ -27,6 +27,7 @@ class NerveNetGNN(nn.Module):
     """
 
     def __init__(self,
+                 observation_dim: int,
                  net_arch: Dict[str, List[Tuple[nn.Module, int]]],
                  activation_fn: Type[nn.Module],
                  gnn_for_values=False,
@@ -83,7 +84,7 @@ class NerveNetGNN(nn.Module):
                 }
         '''
         super(NerveNetGNN, self).__init__()
-
+        self.observation_dim = observation_dim
         self.task_name = task_name
         self.xml_name = xml_name
         self.xml_assets_path = xml_assets_path
@@ -223,12 +224,9 @@ class NerveNetGNN(nn.Module):
         # Build the non-shared part of the network
 
         if self.gnn_for_values:
-            last_layer_dim_vf = self.info["num_nodes"] * last_layer_dim_shared
             vf_net_dim = last_layer_dim_shared
         else:
-            last_layer_dim_vf = self.info["num_nodes"] * \
-                self.last_layer_dim_input
-            vf_net_dim = last_layer_dim_vf  # self.last_layer_dim_input
+            vf_net_dim = self.observation_dim
 
         if not self.action_per_controller:
             # use the features of all nodes to generate an action, not just the features of the controller node
@@ -341,7 +339,7 @@ class NerveNetGNN(nn.Module):
         if self.gnn_for_values:
             pooled_embedding = torch.mean(value_embedding, dim=1)
         else:
-            pooled_embedding = self.flatten(pre_message_passing)
+            pooled_embedding = observations
 
         latent_vf = self.value_net(pooled_embedding)
         # latent_vf = self.debug(self.flatten(pre_message_passing))
