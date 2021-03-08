@@ -1,5 +1,5 @@
 #experiment_name: split_readout
-#experiment_name_suffix: ""
+experiment_name_suffix: "deeper"
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
@@ -21,16 +21,18 @@ n_steps: 2048
 batch_size: 64
 activation_fn: Tanh
 
-net_arch: 
+net_arch:
   input:
-    - [Linear, 12]
+    - [ Linear, 12 ]
   propagate:
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
+    - [ NerveNetConv, 16 ]
+    - [ NerveNetConv, 16 ]
+    - [ NerveNetConv, 16 ]
+    - [ NerveNetConv, 16 ]
+    - [ NerveNetConv, 16 ]
+    - [ NerveNetConv, 16 ]
   policy:
-    - [Linear, 16]
+    - [ Linear, 16 ]
   value:
-    - [Linear, 64]
+    - [ Linear, 64 ]
 

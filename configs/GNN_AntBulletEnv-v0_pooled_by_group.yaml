@@ -1,5 +1,5 @@
 #experiment_name: split_readout
-#experiment_name_suffix: ""
+experiment_name_suffix: "smaller"
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
@@ -25,12 +25,12 @@ net_arch:
   input:
     - [Linear, 12]
   propagate:
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
+    - [NerveNetConv, 8]
+    - [NerveNetConv, 8]
+    - [NerveNetConv, 8]
+    - [NerveNetConv, 8]
   policy:
     - [Linear, 16]
   value:
-    - [Linear, 64]
+    - [Linear, 32]
 
