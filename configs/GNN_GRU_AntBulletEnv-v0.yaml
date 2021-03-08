@@ -1,0 +1,30 @@
+#experiment_name: split_readout
+experiment_name_suffix: "GRU"
+task_name: AntBulletEnv-v0
+alg: PPO
+policy: GnnPolicy
+
+device: cpu
+
+drop_body_nodes: True
+use_sibling_relations: False
+action_per_controller: False
+gnn_for_values: False
+learning_rate: 2.0e-4
+
+total_timesteps: !!float 1e6
+n_envs: 1
+n_steps: 2048
+batch_size: 64
+activation_fn: Tanh
+
+net_arch: 
+  input:
+    - [Linear, 16]
+  propagate:
+    - [NerveNetConvGRU, [16, 4]] # in/out x num_layers
+  policy:
+    - [Linear, 64]
+  value:
+    - [Linear, 64]
+    - [Linear, 64]
