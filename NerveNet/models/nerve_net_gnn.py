@@ -174,10 +174,10 @@ class NerveNetGNN(nn.Module):
             if issubclass(layer_class, NerveNetConv):
                 gnn_values.append(layer_class(last_layer_dim_shared,
                                               layer_size,
-                                              self.update_masks).to(self.device))
+                                              self.update_masks, device=device).to(self.device))
                 gnn_policy.append(layer_class(last_layer_dim_shared,
                                               layer_size,
-                                              self.update_masks).to(self.device))
+                                              self.update_masks, device=device).to(self.device))
             elif layer_class == NerveNetConvGRU:
                 gnn_values.append(layer_class(*layer_size,
                                               self.update_masks).to(self.device))
@@ -227,7 +227,7 @@ class NerveNetGNN(nn.Module):
             vf_net_dim = last_layer_dim_shared
         else:
             last_layer_dim_vf = self.info["num_nodes"] * \
-                self.last_layer_dim_input
+                                self.last_layer_dim_input
             vf_net_dim = last_layer_dim_vf  # self.last_layer_dim_input
 
         if not self.action_per_controller:
@@ -236,7 +236,7 @@ class NerveNetGNN(nn.Module):
             # which means last_layer_dim_shared is the number of
             # dimensions we have for every single node
             last_layer_dim_shared = self.info["num_nodes"] * \
-                last_layer_dim_shared
+                                    last_layer_dim_shared
 
         self.policy_nets = dict()
         for out_group_name, out_node_idx in self.info["output_type_dict"].items():

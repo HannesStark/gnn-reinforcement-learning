@@ -40,6 +40,7 @@ class NerveNetConv(MessagePassing):
                  in_channels: int,
                  out_channels: int,
                  update_masks: Dict[str, Tuple[List[int], int]],
+                 device: Union[torch.device, str] = "auto",
                  cached: bool = False,
                  bias: bool = True,
                  **kwargs):
