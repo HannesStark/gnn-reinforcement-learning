@@ -90,7 +90,7 @@ def parse_arguments():
     p.add_argument('--train_output',
                    help="The directory where the training output & configs were logged to",
                    type=dir_path,
-                   default='runs/GNN_PPO_inp_12_pro_16_16_16_pol_16_val_64_64_N2048_B128_lr3e-04_GNNValue_0_EmbOpt_sharedEpochs_10_Nenvs_2_bigger_value_net_AntBulletEnv-v0_07-03_18-22-55')
+                   default='runs/MLP_PPO_pi64_64_vf64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_shared_AntBulletEnv-v0_02-03_10-45-07')
 
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",

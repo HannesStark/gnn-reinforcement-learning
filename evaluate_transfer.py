@@ -153,16 +153,17 @@ def parse_arguments():
                    help="The directory where the training output & configs were logged to",
                    type=dir_path,
                    default='runs/MLP_PPO_pi64_64_vf64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_shared_AntBulletEnv-v0_02-03_10-45-07')
+    # default='runs/MLP_PPO_pi48_48_vf48_48_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_sharedEpochs_10_Nenvs_1_AntSixLegsEnv-v0_04-03_22-51-23')
 
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",
                    type=int,
-                   default=10)
+                   default=3)
 
     p.add_argument("--transfer_env",
                    help="The environment the model should be transfered to",
                    type=str,
-                   default="AntSixLegsEnv-v0")
+                   default="AntCpLeftBackBulletEnv-v0")
 
     p.add_argument('--xml_assets_path',
                    help="The path to the directory where the xml of the transfer task's robot is defined",
@@ -173,7 +174,7 @@ def parse_arguments():
     p.add_argument('--render',
                    help='Whether to render the evaluation with pybullet client',
                    type=bool,
-                   default=True)
+                   default=False)
 
     args = p.parse_args()
 

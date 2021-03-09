@@ -160,6 +160,20 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
             latent_sde = self.sde_features_extractor(features)
         return latent_pi, log_std_action, latent_vf, latent_sde
 
+    def _predict(self, observation: torch.Tensor, deterministic: bool = False) -> torch.Tensor:
+        """
+        Get the action according to the policy for a given observation.
+
+        :param observation:
+        :param deterministic: Whether to use stochastic or deterministic actions
+        :return: Taken action according to the policy
+        """
+        latent_pi, log_std_action, _, latent_sde = self._get_latent(
+            observation)
+        distribution = self._get_action_dist_from_latent(
+            latent_pi, log_std_action, latent_sde)
+        return distribution.get_actions(deterministic=deterministic)
+
     def forward(self, obs: torch.Tensor, deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Forward pass in all the networks (actor and critic)
