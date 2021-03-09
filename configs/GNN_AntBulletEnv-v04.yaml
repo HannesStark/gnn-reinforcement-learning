@@ -10,10 +10,10 @@ drop_body_nodes: True
 use_sibling_relations: False
 
 # ["action_per_controller", "pooled", "pooled_by_group", "flattened"]
-policy_readout_mode: 'flattened'
+policy_readout_mode: 'pooled_by_group'
 
 gnn_for_values: False
-learning_rate: 2.0e-4
+learning_rate: 3.0e-4
 
 total_timesteps: !!float 2e6
 n_envs: 1
@@ -25,12 +25,12 @@ net_arch:
   input:
     - [Linear, 12]
   propagate:
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
+    - [NerveNetConv, 64]
+    - [NerveNetConv, 64]
+    - [NerveNetConv, 64]
+    - [NerveNetConv, 64]
   policy:
-    - [Linear, 16]
-  value:
     - [Linear, 64]
+  value:
+    - [Linear, 32]
 

@@ -1,5 +1,5 @@
 #experiment_name: split_readout
-
+#experiment_name_suffix: ""
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
@@ -10,7 +10,7 @@ drop_body_nodes: True
 use_sibling_relations: False
 
 # ["action_per_controller", "pooled", "pooled_by_group", "flattened"]
-policy_readout_mode: 'action_per_controller'
+policy_readout_mode: 'pooled_by_group'
 
 gnn_for_values: False
 learning_rate: 3.0e-4
@@ -25,14 +25,12 @@ net_arch:
   input:
     - [Linear, 12]
   propagate:
-    - [NerveNetConv, 32]
-    - [NerveNetConv, 32]
-    - [NerveNetConv, 32]
-    - [NerveNetConv, 32]
-
+    - [NerveNetConv, 64]
+    - [NerveNetConv, 64]
+    - [NerveNetConv, 64]
+    - [NerveNetConv, 64]
   policy:
-    - [Linear, 32]
+    - [Linear, 64]
   value:
-    - [Linear, 32]
-    - [Linear, 32]
+    - [Linear, 64]
 
