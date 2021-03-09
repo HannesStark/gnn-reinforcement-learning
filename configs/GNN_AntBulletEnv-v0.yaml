@@ -13,7 +13,7 @@ use_sibling_relations: False
 policy_readout_mode: 'pooled_by_group'
 
 gnn_for_values: False
-learning_rate: 2.0e-4
+learning_rate: 3.0e-4
 
 total_timesteps: !!float 2e6
 n_envs: 1
