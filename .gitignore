@@ -8,6 +8,8 @@ logs_parser
 logs_parser_nervenet
 MUJUCO_LOG.txt
 out/
+runs
+runs_old
 
 # Output / model files
 *.zip
@@ -41,5 +43,4 @@ pip-selfcheck.json
 #
 .idea
 bullet3
-runs
 pip-delete-this-directory.txt

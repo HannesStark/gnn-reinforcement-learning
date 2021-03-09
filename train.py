@@ -18,7 +18,7 @@ from torch import nn
 import pybullet_data
 import pybullet_envs  # register pybullet envs from bullet3
 
-from NerveNet.graph_util.mujoco_parser_settings import EmbeddingOption
+from NerveNet.graph_util.mujoco_parser_settings import ControllerOption, EmbeddingOption, RootRelationOption
 from NerveNet.models import nerve_net_conv
 from NerveNet.policies import register_policies
 import NerveNet.gym_envs.pybullet.register_disability_envs
@@ -32,8 +32,17 @@ from util import LoggingCallback
 
 algorithms = dict(A2C=A2C, PPO=PPO)
 activation_functions = dict(Tanh=nn.Tanh, ReLU=nn.ReLU)
+
+controller_option = dict(shared=ControllerOption.SHARED,
+                         seperate=ControllerOption.SEPERATE,
+                         unified=ControllerOption.UNIFIED)
+
 embedding_option = dict(shared=EmbeddingOption.SHARED,
                         unified=EmbeddingOption.UNIFIED)
+
+root_option = dict(none=RootRelationOption.NONE,
+                   body=RootRelationOption.BODY,
+                   unified=RootRelationOption.ALL)
 
 
 def train(args):
@@ -96,7 +105,10 @@ def train(args):
             "task_name": args.task_name,
             'device': args.device,
             'gnn_for_values': args.gnn_for_values,
+            'controller_option': controller_option[args.controller_option],
             'embedding_option': embedding_option[args.embedding_option],
+            'root_option': root_option[args.root_option],
+
             'drop_body_nodes': args.drop_body_nodes,
             'use_sibling_relations': args.use_sibling_relations,
             'xml_assets_path': args.xml_assets_path,
@@ -109,6 +121,8 @@ def train(args):
     alg_kwargs.pop("activation_fn", None)
     alg_kwargs.pop("gnn_for_values", None)
     alg_kwargs.pop("embedding_option", None)
+    alg_kwargs.pop("controller_option", None)
+    alg_kwargs.pop("root_option", None)
     alg_kwargs.pop("xml_assets_path", None)
     alg_kwargs.pop("alg", None)
     alg_kwargs.pop("net_arch", None)
@@ -203,10 +217,20 @@ def parse_arguments():
     p.add_argument('--activation_fn',
                    help='Activation function of the policy and value networks.',
                    choices=["Tanh", "ReLU"])
+
+    p.add_argument('--controller_option',
+                   help='Controller Option for mujoco parser',
+                   choices=["shared", "unified", "seperate"],
+                   default='shared')
     p.add_argument('--embedding_option',
                    help='Embedding Option for mujoco parser',
                    choices=["shared", "unified"],
                    default='shared')
+    p.add_argument('--root_option',
+                   help='Root Option for mujoco parser',
+                   choices=["none", "body", "all"],
+                   default='none')
+
     p.add_argument('--drop_body_nodes',
                    help='Whether or not to use body nodes or only the joints and root nodes. Option is passed to the mujoco parser',
                    type=bool,

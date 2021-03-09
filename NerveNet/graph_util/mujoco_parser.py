@@ -32,7 +32,7 @@ def parse_mujoco_graph(task_name: str = None,
                        use_sibling_relations: bool = True,
                        drop_body_nodes: bool = False,
                        root_relation_option: RootRelationOption = RootRelationOption.BODY,
-                       controller_option: ControllerOption = ControllerOption.SHARED,
+                       controller_option: ControllerOption = ControllerOption.UNIFIED,
                        embedding_option: EmbeddingOption = EmbeddingOption.SHARED,
                        foot_list: List[str] = [],
                        absorb_root_joints: bool = True):
@@ -459,7 +459,7 @@ def __get_output_mapping(tree: List[dict], controller_option: ControllerOption) 
         output_type_dict = {node["raw_name"]: node["id"]
                             for node in output_nodes}
     elif controller_option == ControllerOption.UNIFIED:
-        output_type_dict['unified'] = output_list
+        output_type_dict = dict(unified=output_list)
     else:
         raise NotImplementedError(
             "Unknown controller option: %s" % controller_option)
