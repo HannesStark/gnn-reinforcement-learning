@@ -15,7 +15,7 @@ policy_readout_mode: 'pooled_by_group'
 gnn_for_values: False
 learning_rate: 3.0e-4
 
-total_timesteps: !!float 2e6
+total_timesteps: !!float 4e6
 n_envs: 1
 n_steps: 2048
 batch_size: 64
