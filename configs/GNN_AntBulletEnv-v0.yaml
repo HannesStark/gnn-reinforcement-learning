@@ -25,12 +25,12 @@ net_arch:
   input:
     - [Linear, 12]
   propagate:
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
-    - [NerveNetConv, 16]
+    - [NerveNetConv, 32]
+    - [NerveNetConv, 32]
+    - [NerveNetConv, 32]
+    - [NerveNetConv, 32]
   policy:
-    - [Linear, 16]
+    - [Linear, 64]
   value:
     - [Linear, 64]
 
