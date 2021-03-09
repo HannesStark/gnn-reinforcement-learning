@@ -197,7 +197,8 @@ def parse_arguments():
                    default=False)
     p.add_argument('--policy_readout_mode',
                    help='what type of readout net to use.',
-                   choices=["action_per_controller", "pooled", "pooled_by_group", "flattened"],
+                   choices=["action_per_controller", "pooled",
+                            "pooled_by_group", "flattened"],
                    default='flattened')
     p.add_argument('--activation_fn',
                    help='Activation function of the policy and value networks.',
@@ -266,9 +267,9 @@ def parse_arguments():
                                                    for i in net_arch_info[net_arch_key]])
                 else:
                     net_arch_desc += f"_{net_arch_info}"
-        args.experiment_name = f"mode_{args.policy_readout_mode}_"
-        args.experiment_name += f"{policy_abbrv}_{args.alg}{net_arch_desc}_N{args.n_steps}_B{args.batch_size}_"
-        args.experiment_name += f"lr{args.learning_rate:.0e}_GNNValue_{args.gnn_for_values:0d}_EmbOpt_{args.embedding_option}"
+        args.experiment_name = f"{policy_abbrv}_{args.alg}{net_arch_desc}_N{args.n_steps}_B{args.batch_size}_"
+        args.experiment_name += f"lr{args.learning_rate:.0e}_GNNValue_{args.gnn_for_values:0d}_EmbOpt_{args.embedding_option}_"
+        args.experiment_name += f"mode_{args.policy_readout_mode}_"
         args.experiment_name += f"Epochs_{args.n_epochs}_Nenvs_{args.n_envs}"
 
         if args.experiment_name_suffix is not None:
