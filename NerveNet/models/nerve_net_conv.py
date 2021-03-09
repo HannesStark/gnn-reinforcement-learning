@@ -157,6 +157,7 @@ class NerveNetConvGRU(GatedGraphConv):
 
     def __init__(self,
                  out_channels: int,
+                 gnn_channels: int,
                  num_layers: int,
                  update_masks: Dict[str, Tuple[List[int], int]],
                  aggr: str = 'add',
@@ -166,23 +167,23 @@ class NerveNetConvGRU(GatedGraphConv):
         super(GatedGraphConv, self).__init__(aggr=aggr, **kwargs)
 
         self.out_channels = out_channels
+        self.gnn_channels = gnn_channels
         self.num_layers = num_layers
         self.update_masks = update_masks
 
+        self.weights = Parameter(
+            Tensor(num_layers, out_channels, gnn_channels))
+
         self.rnns = dict()
-        self.weights = dict()
         for group_name, (update_mask, _) in self.update_masks.items():
-            # self.weights[group_name] = Parameter(
-            #     Tensor(num_layers, out_channels, out_channels))
             self.rnns[group_name] = torch.nn.GRUCell(
-                out_channels, out_channels, bias=bias)
-        self.activation = torch.nn.ReLU()
+                gnn_channels, out_channels, bias=bias)
 
         self.reset_parameters()
 
     def reset_parameters(self):
+        uniform(self.out_channels, self.weights)
         for group_name, (update_mask, _) in self.update_masks.items():
-            # uniform(self.out_channels, self.weights[group_name])
             self.rnns[group_name].reset_parameters()
 
     def forward(self, x: Tensor, edge_index: Adj,
@@ -198,7 +199,8 @@ class NerveNetConvGRU(GatedGraphConv):
             x = torch.cat([x, zero], dim=1)
 
         for i in range(self.num_layers):
-            m = self.propagate(edge_index, x=x, edge_weight=edge_weight,
+            m = torch.matmul(x, self.weights[i])
+            m = self.propagate(edge_index, x=m, edge_weight=edge_weight,
                                size=None)
 
             # use x_next to get arround the "no gradient for inplace operation" error we get when trying to directly update x
@@ -208,9 +210,7 @@ class NerveNetConvGRU(GatedGraphConv):
                 x_group = x[:, update_mask]
                 m_group = m[:, update_mask]
 
-                #m_group = torch.matmul(m_group, self.weights[group_name][i])
-                #m_group = self.activation(m_group)
-                x_next[:, update_mask] += self.rnns[group_name](m_group.view(-1, self.out_channels),
+                x_next[:, update_mask] += self.rnns[group_name](m_group.view(-1, self.gnn_channels),
                                                                 x_group.view(-1, self.out_channels)).view(batch_size, -1, self.out_channels)
             x = x_next
 

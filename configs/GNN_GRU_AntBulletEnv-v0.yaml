@@ -1,5 +1,5 @@
 #experiment_name: split_readout
-experiment_name_suffix: "GRU_perContrl"
+experiment_name_suffix: "GRU"
 task_name: AntBulletEnv-v0
 alg: PPO
 policy: GnnPolicy
@@ -13,7 +13,7 @@ use_sibling_relations: False
 policy_readout_mode: 'action_per_controller'
 
 gnn_for_values: False
-learning_rate: 3.0e-4
+learning_rate: 2.0e-4
 
 total_timesteps: !!float 2e6
 n_envs: 1
@@ -25,7 +25,7 @@ net_arch:
   input:
     - [Linear, 32]
   propagate:
-    - [NerveNetConvGRU, [32, 3]] # in/out x num_layers
+    - [NerveNetConvGRU, [32, 8, 4]] # in/out x num_layers
   policy:
     - [Linear, 16]
   value:

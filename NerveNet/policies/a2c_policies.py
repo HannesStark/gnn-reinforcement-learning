@@ -152,13 +152,13 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         """
         # Preprocess the observation if needed
         features = self.extract_features(obs)
-        latent_pi, latent_vf = self.mlp_extractor(features)
+        latent_pi, log_std_action, latent_vf = self.mlp_extractor(features)
 
         # Features for sde
         latent_sde = latent_pi
         if self.sde_features_extractor is not None:
             latent_sde = self.sde_features_extractor(features)
-        return latent_pi, latent_vf, latent_sde
+        return latent_pi, log_std_action, latent_vf, latent_sde
 
     def forward(self, obs: torch.Tensor, deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
@@ -168,12 +168,13 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         :param deterministic: Whether to sample or use deterministic actions
         :return: action, value and log probability of the action
         """
-        latent_pi, latent_vf, latent_sde = self._get_latent(obs)
+        latent_pi, log_std_action, latent_vf, latent_sde = self._get_latent(
+            obs)
         mean_actions = latent_pi
         values = latent_vf  # nervenet GNN already returns the values
         # Evaluate the values for the given observations
         distribution = self._get_action_dist_from_latent(
-            mean_actions, latent_sde=latent_sde)
+            mean_actions, log_std_action, latent_sde=latent_sde)
         actions = distribution.get_actions(deterministic=deterministic)
 
         log_prob = distribution.log_prob(actions)
@@ -189,13 +190,15 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         :return: estimated value, log likelihood of taking those actions
             and entropy of the action distribution.
         """
-        latent_pi, latent_vf, latent_sde = self._get_latent(obs)
-        distribution = self._get_action_dist_from_latent(latent_pi, latent_sde)
+        latent_pi, log_std_action, latent_vf, latent_sde = self._get_latent(
+            obs)
+        distribution = self._get_action_dist_from_latent(
+            latent_pi, log_std_action, latent_sde)
         log_prob = distribution.log_prob(actions)
         values = latent_vf  # nervenet GNN already returns the values
         return values, log_prob, distribution.entropy()
 
-    def _get_action_dist_from_latent(self, mean_actions: torch.Tensor, latent_sde: Optional[torch.Tensor] = None) -> Distribution:
+    def _get_action_dist_from_latent(self, mean_actions: torch.Tensor, log_std_action: torch.Tensor, latent_sde: Optional[torch.Tensor] = None) -> Distribution:
         """
         Retrieve action distribution given the latent codes.
 
@@ -205,18 +208,9 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         """
 
         if isinstance(self.action_dist, DiagGaussianDistribution):
-            return self.action_dist.proba_distribution(mean_actions, self.log_std)
-        elif isinstance(self.action_dist, CategoricalDistribution):
-            # Here mean_actions are the logits before the softmax
-            return self.action_dist.proba_distribution(action_logits=mean_actions)
-        elif isinstance(self.action_dist, MultiCategoricalDistribution):
-            # Here mean_actions are the flattened logits
-            return self.action_dist.proba_distribution(action_logits=mean_actions)
-        elif isinstance(self.action_dist, BernoulliDistribution):
-            # Here mean_actions are the logits (before rounding to get the binary actions)
-            return self.action_dist.proba_distribution(action_logits=mean_actions)
+            return self.action_dist.proba_distribution(mean_actions, log_std_action)
         elif isinstance(self.action_dist, StateDependentNoiseDistribution):
-            return self.action_dist.proba_distribution(mean_actions, self.log_std, latent_sde)
+            return self.action_dist.proba_distribution(mean_actions, log_std_action, latent_sde)
         else:
             raise ValueError("Invalid action distribution")
 
