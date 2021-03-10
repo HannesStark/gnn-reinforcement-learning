@@ -10,12 +10,12 @@ drop_body_nodes: True
 use_sibling_relations: False
 
 # ["action_per_controller", "pooled", "pooled_by_group", "flattened"]
-policy_readout_mode: 'action_per_controller'
+policy_readout_mode: 'pooled_by_group'
 
 gnn_for_values: False
-learning_rate: 3.0e-4
+learning_rate: 6.0e-4
 
-total_timesteps: !!float 4e6
+total_timesteps: !!float 3e6
 n_envs: 1
 n_steps: 2048
 batch_size: 64
