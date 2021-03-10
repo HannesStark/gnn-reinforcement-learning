@@ -3,6 +3,8 @@ import copy
 import json
 import os
 from typing import Callable
+from collections import deque
+import time
 
 from datetime import datetime
 from pathlib import Path
@@ -10,9 +12,12 @@ from pathlib import Path
 import json
 import pyaml
 import torch
+import numpy as np
 import yaml
-from stable_baselines3.common.utils import get_device
+from stable_baselines3.common.utils import get_device, safe_mean
 from stable_baselines3.ppo import MlpPolicy
+from stable_baselines3.common.callbacks import EventCallback
+from stable_baselines3.common import logger
 from torch import nn
 
 import pybullet_data
@@ -52,6 +57,14 @@ def train(args):
     print('Device specified: {}'.format(args.device))
     print('*************************\n')
 
+    # load the config of the trained model:
+    with open(args.pretrained_output / "train_arguments.yaml") as yaml_data:
+        pretrain_arguments = yaml.load(yaml_data,
+                                       Loader=yaml.FullLoader)
+
+    pretrained_model = algorithms[pretrain_arguments["alg"]].load(
+        args.pretrained_output / "".join(pretrain_arguments["model_name"].split(".")[:-1]), device='cpu')
+
     # Prepare tensorboard logging
     log_name = '{}_{}_{}'.format(
         args.experiment_name, args.task_name, datetime.now().strftime('%d-%m_%H-%M-%S'))
@@ -66,6 +79,8 @@ def train(args):
     train_args.config = train_args.config.name
     pyaml.dump(train_args.__dict__, open(
         os.path.join(run_dir, 'train_arguments.yaml'), 'w'))
+
+    assert args.task_name == pretrain_arguments["task_name"], "Envs must match for transfer learning"
 
     # Create the vectorized environment
     n_envs = train_args.n_envs  # Number of processes to use
@@ -135,6 +150,7 @@ def train(args):
     alg_kwargs.pop("use_sibling_relations", None)
     alg_kwargs.pop("experiment_name_suffix", None)
     alg_kwargs.pop("policy_readout_mode", None)
+    alg_kwargs.pop("pretrained_output", None)
 
     model = alg_class(args.policy,
                       env,
@@ -148,9 +164,75 @@ def train(args):
                       #   n_epochs=args.n_epochs,
                       **alg_kwargs)
 
-    model.learn(total_timesteps=args.total_timesteps,
-                callback=callbacks,
-                tb_log_name=log_name)
+    # model.learn(total_timesteps=args.total_timesteps,
+    #             callback=callbacks,
+    #             tb_log_name=log_name)
+
+    # PPO Learn parameters:
+    total_timesteps = args.total_timesteps
+    callback = callbacks
+    log_interval = 1
+    eval_env = make_vec_env(args.task_name, n_envs=1)
+    eval_freq = 1e4
+    n_eval_episodes = 3
+    tb_log_name = log_name
+    eval_log_path = None
+    reset_num_timesteps = True
+
+    #################################
+    ##### Custom Transfer Learn #####
+    #################################
+
+    iteration = 0
+    total_timesteps, callback = model._setup_learn(
+        total_timesteps, eval_env, callback, eval_freq, n_eval_episodes, eval_log_path, reset_num_timesteps, tb_log_name
+    )
+
+    ### setup pretrained model ###
+    pretrained_model.num_timesteps = 0
+    pretrained_model._episode_num = 0
+    pretrained_model._total_timesteps = total_timesteps
+    pretrained_model.ep_info_buffer = deque(maxlen=100)
+    pretrained_model.ep_success_buffer = deque(maxlen=100)
+    pretrained_model._last_obs = model.env.reset()
+    pretrained_model._last_dones = np.zeros((model.env.num_envs,), dtype=bool)
+
+    callback.on_training_start(locals(), globals())
+
+    while pretrained_model.num_timesteps < total_timesteps:
+
+        continue_training = pretrained_model.collect_rollouts(model.env,
+                                                              callback,
+                                                              model.rollout_buffer,
+                                                              n_rollout_steps=model.n_steps)
+
+        if continue_training is False:
+            break
+
+        iteration += 1
+        model._update_current_progress_remaining(
+            pretrained_model.num_timesteps, total_timesteps)
+
+        # Display training infos
+        if log_interval is not None and iteration % log_interval == 0:
+            fps = int(pretrained_model.num_timesteps /
+                      (time.time() - model.start_time))
+            logger.record("time/iterations", iteration, exclude="tensorboard")
+            if len(model.ep_info_buffer) > 0 and len(model.ep_info_buffer[0]) > 0:
+                logger.record(
+                    "rollout/ep_rew_mean", safe_mean([ep_info["r"] for ep_info in model.ep_info_buffer]))
+                logger.record(
+                    "rollout/ep_len_mean", safe_mean([ep_info["l"] for ep_info in model.ep_info_buffer]))
+            logger.record("time/fps", fps)
+            logger.record("time/time_elapsed", int(time.time() -
+                                                   model.start_time), exclude="tensorboard")
+            logger.record("time/total_timesteps",
+                          pretrained_model.num_timesteps, exclude="tensorboard")
+            logger.dump(step=pretrained_model.num_timesteps)
+
+        model.train()
+
+    callback.on_training_end()
 
     model.save(os.path.join(args.tensorboard_log +
                             "/" + log_name, args.model_name))
@@ -164,10 +246,18 @@ def dir_path(path):
             f"readable_dir:{path} is not a valid path")
 
 
+def dir_path(path):
+    if os.path.isdir(path):
+        return Path(path)
+    else:
+        raise argparse.ArgumentTypeError(
+            f"readable_dir:{path} is not a valid path")
+
+
 def parse_arguments():
     p = argparse.ArgumentParser()
     p.add_argument('--config', type=argparse.FileType(mode='r'),
-                   default='configs/GNN_AntBulletEnv-v0.yaml')
+                   default='configs/GNN_AntBulletEnv-v03.yaml')
     p.add_argument('--task_name', help='The name of the environment to use')
     p.add_argument('--xml_assets_path',
                    help="The path to the directory where the xml of the task's robot is defined",
@@ -262,6 +352,11 @@ def parse_arguments():
     p.add_argument('--model_name',
                    help='The name of your saved model',
                    default='model.zip')
+
+    p.add_argument('--pretrained_output',
+                   help="The directory where the pretrained output & configs were logged to",
+                   type=dir_path,
+                   default='runs/MLP_PPO_pi64_64_vf64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_shared_AntBulletEnv-v0_02-03_10-45-07')
 
     args = p.parse_args()
 
