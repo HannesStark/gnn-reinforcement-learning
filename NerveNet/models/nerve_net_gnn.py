@@ -298,7 +298,7 @@ class NerveNetGNN(nn.Module):
 
                 self.policy_nets[out_group_name] = nn.Sequential(
                     *policy_net).to(self.device)
-            return policy_net_dim
+        return policy_net_dim
 
     def _forward_input_net(self, observations: torch.Tensor) -> torch.Tensor:
         # "sparse" embedding matrix
