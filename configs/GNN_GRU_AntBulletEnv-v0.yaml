@@ -2,7 +2,7 @@
 experiment_name_suffix: "GRU"
 task_name: AntBulletEnv-v0
 alg: PPO
-policy: GnnPolicy_V2
+policy: GnnPolicy
 
 device: cpu
 

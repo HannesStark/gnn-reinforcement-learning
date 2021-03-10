@@ -19,7 +19,7 @@ from stable_baselines3.common.type_aliases import Schedule
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor, FlattenExtractor
 from stable_baselines3.common.utils import get_device
-from NerveNet.models.nerve_net_gnn import NerveNetGNN, NerveNetGNN_V0
+from NerveNet.models.nerve_net_gnn import NerveNetGNN, NerveNetGNN_V0, NerveNetGNN_V2
 from NerveNet.models.nerve_net_conv import NerveNetConv
 from NerveNet.graph_util.mujoco_parser import parse_mujoco_graph
 
@@ -223,7 +223,7 @@ class ActorCriticGnnPolicy_V2(ActorCriticGnnPolicy):
             kwargs.pop("mlp_extractor_class")
         super(ActorCriticGnnPolicy_V2, self).__init__(
             *args,
-            mlp_extractor_class=NerveNetGNN,
+            mlp_extractor_class=NerveNetGNN_V2,
             **kwargs
         )
 
