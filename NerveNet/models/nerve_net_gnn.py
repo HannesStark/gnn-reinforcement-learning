@@ -489,6 +489,8 @@ class NerveNetGNN_V2(NerveNetGNN):
                     policy_std_net.append(
                         nn.Linear(policy_net_dim, len(out_node_idx)).to(self.device))
 
+                policy_std_net.append(torch.nn.LogSigmoid())
+
                 self.policy_nets[out_group_name] = nn.Sequential(
                     *policy_net).to(self.device)
                 self.policy_std_nets[out_group_name] = nn.Sequential(
