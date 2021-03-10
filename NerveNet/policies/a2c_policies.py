@@ -152,7 +152,100 @@ class ActorCriticGnnPolicy(ActorCriticPolicy):
         """
         # Preprocess the observation if needed
         features = self.extract_features(obs)
-        latent_pi, log_std_action, latent_vf = self.mlp_extractor(features)
+        latent_pi,  latent_vf = self.mlp_extractor(features)
+
+        # Features for sde
+        latent_sde = latent_pi
+        if self.sde_features_extractor is not None:
+            latent_sde = self.sde_features_extractor(features)
+        return latent_pi, latent_vf, latent_sde
+
+    def _predict(self, observation: torch.Tensor, deterministic: bool = False) -> torch.Tensor:
+        """
+        Get the action according to the policy for a given observation.
+
+        :param observation:
+        :param deterministic: Whether to use stochastic or deterministic actions
+        :return: Taken action according to the policy
+        """
+        latent_pi, _, latent_sde = self._get_latent(
+            observation)
+        distribution = self._get_action_dist_from_latent(
+            latent_pi, latent_sde)
+        return distribution.get_actions(deterministic=deterministic)
+
+    def forward(self, obs: torch.Tensor, deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Forward pass in all the networks (actor and critic)
+
+        :param obs: Observation
+        :param deterministic: Whether to sample or use deterministic actions
+        :return: action, value and log probability of the action
+        """
+        latent_pi,  latent_vf, latent_sde = self._get_latent(
+            obs)
+        mean_actions = latent_pi
+        values = latent_vf  # nervenet GNN already returns the values
+        # Evaluate the values for the given observations
+        distribution = self._get_action_dist_from_latent(
+            mean_actions, latent_sde=latent_sde)
+        actions = distribution.get_actions(deterministic=deterministic)
+
+        log_prob = distribution.log_prob(actions)
+        return actions, values, log_prob
+
+    def evaluate_actions(self, obs: torch.Tensor, actions: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Evaluate actions according to the current policy,
+        given the observations.
+
+        :param obs:
+        :param actions:
+        :return: estimated value, log likelihood of taking those actions
+            and entropy of the action distribution.
+        """
+        latent_pi,  latent_vf, latent_sde = self._get_latent(
+            obs)
+        distribution = self._get_action_dist_from_latent(
+            latent_pi, latent_sde)
+        log_prob = distribution.log_prob(actions)
+        values = latent_vf  # nervenet GNN already returns the values
+        return values, log_prob, distribution.entropy()
+
+
+class ActorCriticGnnPolicy_V2(ActorCriticGnnPolicy):
+    def __init__(
+            self,
+            *args,
+            **kwargs
+    ):
+        if "mlp_extractor_class" in kwargs.keys():
+            kwargs.pop("mlp_extractor_class")
+        super(ActorCriticGnnPolicy_V2, self).__init__(
+            *args,
+            mlp_extractor_class=NerveNetGNN,
+            **kwargs
+        )
+
+    def _build_mlp_extractor(self) -> None:
+        """
+        Create the policy and value networks.
+        """
+        self.mlp_extractor = self.mlp_extractor_class(self.features_dim, net_arch=self.net_arch, activation_fn=self.activation_fn,
+                                                      **self.mlp_extractor_kwargs
+                                                      )
+
+    def _get_latent(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Get the latent code (i.e., activations of the last layer of each network)
+        for the different networks.
+        :param obs: Observation
+        :return: Latent codes
+            for the actor, the value function and for gSDE function
+        """
+        # Preprocess the observation if needed
+        features = self.extract_features(obs)
+        (latent_pi, log_std_action), latent_vf = self.mlp_extractor(features)
 
         # Features for sde
         latent_sde = latent_pi

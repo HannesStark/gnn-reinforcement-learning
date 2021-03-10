@@ -226,24 +226,48 @@ class NerveNetGNN(nn.Module):
 
         # Build the non-shared part of the network
 
+        policy_net_dim = self._build_policy_net(
+            last_layer_dim_shared, net_arch, activation_fn)
+
         if self.gnn_for_values:
             vf_net_dim = last_layer_dim_shared
         else:
             vf_net_dim = self.observation_dim
 
+        for layer_class, layer_size in net_arch["value"]:
+            value_net.append(layer_class(
+                vf_net_dim, layer_size).to(self.device))
+            value_net.append(activation_fn().to(self.device))
+            vf_net_dim = layer_size
+        # add mandatory linear layer that returns a scalar for the pooled embeddings
+        value_net.append(
+            nn.Linear(vf_net_dim, 1).to(self.device))
+
+        # Save dim, used to create the distributions
+        self.latent_dim_pi = policy_net_dim
+        self.latent_dim_vf = vf_net_dim
+
+        # Create networks
+        # If the list of layers is empty, the network will just act as an Identity module
+        self.gnn_policy = gnn_policy
+        self.gnn_values = gnn_values
+        self.flatten = nn.Flatten()
+        self.value_net = nn.Sequential(*value_net).to(self.device)
+
+    def _build_policy_net(self, last_layer_dim_shared, net_arch, activation_fn):
         if self.policy_readout_mode == 'flattened':
             # use the features of all nodes to generate an action, not just the features of the controller node
             # in the shared network we use GCN convolutions,
             # which means last_layer_dim_shared is the number of
             # dimensions we have for every single node
             last_layer_dim_shared = self.info["num_nodes"] * \
-                                    last_layer_dim_shared
+                last_layer_dim_shared
 
         if self.policy_readout_mode == 'pooled' or self.policy_readout_mode == 'pooled_by_group':
             policy_net = nn.ModuleList()
             policy_std_net = nn.ModuleList()
             policy_net_dim = 2 * \
-                             last_layer_dim_shared if self.policy_readout_mode == 'pooled_by_group' else last_layer_dim_shared
+                last_layer_dim_shared if self.policy_readout_mode == 'pooled_by_group' else last_layer_dim_shared
             for layer_class, layer_size in net_arch["policy"]:
                 policy_net.append(layer_class(
                     policy_net_dim, layer_size).to(self.device))
@@ -258,7 +282,8 @@ class NerveNetGNN(nn.Module):
             policy_std_net.append(nn.Linear(policy_net_dim, len(
                 self.action_node_indices)).to(self.device))
             self.policy_net = nn.Sequential(*policy_net).to(self.device)
-            self.policy_std_net = nn.Sequential(*policy_std_net).to(self.device)
+            self.policy_std_net = nn.Sequential(
+                *policy_std_net).to(self.device)
         else:
             self.policy_nets = dict()
             self.policy_std_nets = dict()
@@ -293,32 +318,9 @@ class NerveNetGNN(nn.Module):
                     *policy_net).to(self.device)
                 self.policy_std_nets[out_group_name] = nn.Sequential(
                     *policy_std_net).to(self.device)
+            return policy_net_dim
 
-        for layer_class, layer_size in net_arch["value"]:
-            value_net.append(layer_class(
-                vf_net_dim, layer_size).to(self.device))
-            value_net.append(activation_fn().to(self.device))
-            vf_net_dim = layer_size
-        # add mandatory linear layer that returns a scalar for the pooled embeddings
-        value_net.append(nn.Linear(vf_net_dim, 1).to(self.device))
-
-        # Save dim, used to create the distributions
-        self.latent_dim_pi = policy_net_dim
-        self.latent_dim_vf = vf_net_dim
-
-        # Create networks
-        # If the list of layers is empty, the network will just act as an Identity module
-        self.gnn_policy = gnn_policy
-        self.gnn_values = gnn_values
-        self.flatten = nn.Flatten()
-        self.value_net = nn.Sequential(*value_net).to(self.device)
-
-    def forward(self, observations: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-            return:
-                latent_policy, latent_value of the specified network.
-                If all layers are shared, then ``latent_policy == latent_value``
-         """
+    def _forward_input_net(self, observations: torch.Tensor) -> torch.Tensor:
         # "sparse" embedding matrix
         sp_embedding = observations_to_node_attributes(observations,
                                                        self.info["obs_input_mapping"],
@@ -336,11 +338,9 @@ class NerveNetGNN(nn.Module):
             if len(attribute_mask) > 0:
                 embedding[:, node_mask, :] = self.shared_input_nets[group_name](
                     sp_embedding[:, node_mask][:, :, attribute_mask])
+        return embedding
 
-        # embedding = sp_embedding
-        # [batch_size, number_nodes, features_dim]
-        pre_message_passing = embedding
-
+    def _forward_gnns(self, embedding) -> Tuple[torch.Tensor, torch.Tensor]:
         policy_embedding = embedding
         for layer in self.gnn_policy:
             if isinstance(layer, NerveNetConvGAT):
@@ -375,15 +375,22 @@ class NerveNetGNN(nn.Module):
                 # [batch_size, number_nodes, features_dim]
                 value_embedding = layer(value_embedding).to(self.device)
 
+        return policy_embedding, value_embedding
+
+    def _forward_value_net(self, value_embedding, observations) -> torch.Tensor:
+
         if self.gnn_for_values:
             pooled_value_embedding = torch.mean(value_embedding, dim=1)
         else:
             pooled_value_embedding = observations
 
         latent_vf = self.value_net(pooled_value_embedding)
+        return latent_vf
+
+    def _forward_policy_net(self, policy_embedding, observations) -> torch.Tensor:
 
         action_nodes_embedding = policy_embedding[:, self.action_node_indices,
-                                 :]  # [batchsize, number_action_nodes, features_dim]
+                                                  :]  # [batchsize, number_action_nodes, features_dim]
         action_nodes_embedding_flat = action_nodes_embedding.view(-1, action_nodes_embedding.shape[
             -1])  # [batchsize * number_action_nodes, features_dim]
 
@@ -425,9 +432,22 @@ class NerveNetGNN(nn.Module):
                     log_std_action[:, out_idx] = policy_std_net(
                         policy_embedding.view(observations.shape[0], -1))
 
-        # latent_pis = self.policy_net(action_nodes_embedding_flat) # [batch_size, number_nodes]
-        # latent_pis = latent_pis.view(-1, action_nodes_embedding.shape[1])
-        return latent_pis, log_std_action, latent_vf
+        return latent_pis, log_std_action
+
+    def forward(self, observations: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+            return:
+                latent_policy, latent_value of the specified network.
+                If all layers are shared, then ``latent_policy == latent_value``
+         """
+        embedding = self._forward_input_net(observations)
+
+        policy_embedding, value_embedding = self._forward_gnns(embedding)
+
+        latent_vf = self._forward_value_net(value_embedding, observations)
+        latent_pis = self._forward_policy_net(policy_embedding, observations)
+
+        return latent_pis, latent_vf
 
 
 # This is the old version of our NerveNetGNN from the intermediate presentation
@@ -596,7 +616,7 @@ class NerveNetGNN_V0(nn.Module):
             last_layer_dim_vf = self.info["num_nodes"] * last_layer_dim_shared
         else:
             last_layer_dim_vf = self.info["num_nodes"] * \
-                                self.last_layer_dim_input
+                self.last_layer_dim_input
 
         for layer_class, layer_size in net_arch["policy"]:
             policy_net.append(layer_class(
