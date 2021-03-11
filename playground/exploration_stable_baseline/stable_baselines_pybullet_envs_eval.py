@@ -38,7 +38,7 @@ def logging_callback(local_args, globals):
 
 mean_reward, std_reward = evaluate_policy(model,
                                           eval_env,
-                                          n_eval_episodes=10,
+                                          n_eval_episodes=109,
                                           render=True,
                                           deterministic=True,
                                           return_episode_rewards=False,

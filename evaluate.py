@@ -90,7 +90,7 @@ def parse_arguments():
     p.add_argument('--train_output',
                    help="The directory where the training output & configs were logged to",
                    type=dir_path,
-                   default='runs/GNN_PPO_inp_32_pro_32164_pol_16_val_64_64_N2048_B512_lr2e-04_GNNValue_0_EmbOpt_shared_mode_action_per_controller_Epochs_10_Nenvs_8_GRU_AntBulletEnv-v0_09-03_18-00-53')
+                   default='runs/GNN_PPO_inp_12_pro_64_64_64_64_pol_64_val_32_N2048_B64_lr3e-04_mode_flattened_Epochs_10_Nenvs_1_AntBulletEnv-v0_10-03_12-41-43')
 
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",
@@ -100,7 +100,7 @@ def parse_arguments():
     p.add_argument('--render',
                    help='Whether to render the evaluation with pybullet client',
                    type=bool,
-                   default=False)
+                   default=True)
 
     args = p.parse_args()
 
