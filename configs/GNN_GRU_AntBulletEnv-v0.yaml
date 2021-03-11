@@ -12,22 +12,23 @@ controller_option: unified
 embedding_option: shared
 
 # ["action_per_controller", "pooled", "pooled_by_group", "flattened"]
-policy_readout_mode: 'pooled_by_group'
+policy_readout_mode: 'action_per_controller'
 
 gnn_for_values: False
 learning_rate: 2.0e-4
 
 total_timesteps: !!float 2e6
-n_envs: 4
+n_epochs: 30
+n_envs: 16
 n_steps: 2048
-batch_size: 256
+batch_size: 512
 activation_fn: Tanh
 
 net_arch: 
   input:
     - [Linear, 64]
   propagate:
-    - [NerveNetConvGRU, [64, 32, 4]] # in/out x num_layers
+    - [NerveNetConvGRU, [64, 32, 3]] # in/out x num_layers
   policy:
     - [Linear, 64]
   value:

@@ -39,6 +39,14 @@ def init_evaluate(args):
         args.train_output / "".join(train_arguments["model_name"].split(".")[:-1]), device='cpu')
     env_name = train_arguments["task_name"]
 
+    if args.save_again:
+        if "mlp_extractor_kwargs" in model.policy_kwargs:
+            if "xml_assets_path" in model.policy_kwargs["mlp_extractor_kwargs"]:
+                model.policy_kwargs["mlp_extractor_kwargs"]["xml_assets_path"] = str(
+                    model.policy_kwargs["mlp_extractor_kwargs"]["xml_assets_path"])
+                model_folder = train_arguments["experiment_name"]
+                model.save(args.train_output / "model2.zip")
+
     env = gym.make(env_name)
 
     if args.render:
@@ -90,7 +98,7 @@ def parse_arguments():
     p.add_argument('--train_output',
                    help="The directory where the training output & configs were logged to",
                    type=dir_path,
-                   default='runs/GNN_PPO_inp_32_pro_32164_pol_16_val_64_64_N2048_B512_lr2e-04_GNNValue_0_EmbOpt_shared_mode_action_per_controller_Epochs_10_Nenvs_8_GRU_AntBulletEnv-v0_09-03_18-00-53')
+                   default='runs/GNN_PPO_inp_64_pro_64324_pol_64_val_64_64_N2048_B512_lr2e-04_mode_action_per_controller_Epochs_30_Nenvs_16_GRU_AntBulletEnv-v0_10-03_23-44-46')
 
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",
@@ -101,6 +109,11 @@ def parse_arguments():
                    help='Whether to render the evaluation with pybullet client',
                    type=bool,
                    default=False)
+
+    p.add_argument('--save_again',
+                   help='Whether to save the model in a way we can load it on any system',
+                   type=bool,
+                   default=True)
 
     args = p.parse_args()
 
