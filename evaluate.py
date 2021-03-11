@@ -16,6 +16,7 @@ from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import MlpPolicy
 from stable_baselines3.common.evaluation import evaluate_policy
 
+import pybullet_data
 import pybullet_envs  # register pybullet envs from bullet3
 
 import NerveNet.gym_envs.pybullet.register_disability_envs
@@ -46,6 +47,14 @@ def init_evaluate(args):
                     model.policy_kwargs["mlp_extractor_kwargs"]["xml_assets_path"])
                 model_folder = train_arguments["experiment_name"]
                 model.save(args.train_output / "model2.zip")
+
+    # if the base environment was trained on a another system, this path might be wrong.
+    # we can't easily fix this in general...
+    # but in case it is just the default path to the pybullet_data we can
+    base_xml_path_parts = model.policy.mlp_extractor.xml_assets_path.parents._parts
+    if "pybullet_data" in base_xml_path_parts:
+        model.policy.mlp_extractor.xml_assets_path.parents._parts = Path(
+            pybullet_data.getDataPath()) / "mjcf"
 
     env = gym.make(env_name)
 
@@ -103,17 +112,17 @@ def parse_arguments():
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",
                    type=int,
-                   default=10)
+                   default=1)
 
     p.add_argument('--render',
                    help='Whether to render the evaluation with pybullet client',
                    type=bool,
-                   default=False)
+                   default=True)
 
     p.add_argument('--save_again',
                    help='Whether to save the model in a way we can load it on any system',
                    type=bool,
-                   default=True)
+                   default=False)
 
     args = p.parse_args()
 
