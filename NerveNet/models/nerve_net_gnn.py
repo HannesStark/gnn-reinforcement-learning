@@ -40,7 +40,7 @@ class NerveNetGNN(nn.Module):
                  device: Union[torch.device, str] = "auto",
                  task_name: str = None,
                  xml_name: str = None,
-                 xml_assets_path: Path = None):
+                 xml_assets_path: Union[str, Path] = None):
         '''
         TODO add documentation
 
@@ -90,6 +90,8 @@ class NerveNetGNN(nn.Module):
         self.task_name = task_name
         self.xml_name = xml_name
         self.xml_assets_path = xml_assets_path
+        if isinstance(xml_assets_path, str):
+            self.xml_assets_path = Path(xml_assets_path)
         self.device = get_device(device)
         self.gnn_for_values = gnn_for_values
         self.policy_readout_mode = policy_readout_mode
