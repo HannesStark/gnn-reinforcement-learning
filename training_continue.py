@@ -62,7 +62,7 @@ def train(args):
 
     # Prepare tensorboard logging
     log_name = '{}_{}'.format(
-        pretrain_arguments["experiment_name"],  datetime.now().strftime('%d-%m_%H-%M-%S'))
+        pretrain_arguments["experiment_name"], datetime.now().strftime('%d-%m_%H-%M-%S'))
     run_dir = args.tensorboard_log + "/" + log_name
     Path(run_dir).mkdir(parents=True, exist_ok=True)
     callbacks = []

@@ -301,7 +301,7 @@ def parse_arguments():
                     net_arch_desc += f"_{net_arch_info}"
         args.experiment_name = f"{policy_abbrv}_{args.alg}{net_arch_desc}_N{args.n_steps}_B{args.batch_size}_"
         args.experiment_name += f"lr{args.learning_rate:.0e}_"
-        #args.experiment_name += f"GNNValue_{args.gnn_for_values:0d}_EmbOpt_{args.embedding_option}_"
+        # args.experiment_name += f"GNNValue_{args.gnn_for_values:0d}_EmbOpt_{args.embedding_option}_"
         args.experiment_name += f"mode_{args.policy_readout_mode}_"
         args.experiment_name += f"Epochs_{args.n_epochs}_Nenvs_{args.n_envs}"
 
