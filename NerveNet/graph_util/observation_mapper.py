@@ -60,7 +60,7 @@ def observations_to_node_attributes(observations: torch.Tensor,
 
     batch_size, observation_sample_size = observations.shape
     # check that there is a mapping for every element of the observation vector
-    assert max(itertools.chain.from_iterable(list(obs_input_mapping.values()))) + 1 == observation_sample_size
+    #assert max(itertools.chain.from_iterable(list(obs_input_mapping.values()))) + 1 == observation_sample_size
 
     max_static_feature_dim = static_node_attr.shape[1]
     max_obs_feature_dim = max([len(l) for l in obs_input_mapping.values()])

@@ -338,6 +338,106 @@ class ActorCriticGnnPolicy_V0(ActorCriticGnnPolicy):
         )
 
 
+class ActorCriticGNNPolicyTransfer(ActorCriticGnnPolicy):
+
+    def __init__(
+            self,
+            observation_space: gym.spaces.Space,
+            action_space: gym.spaces.Space,
+            lr_schedule: Schedule,
+            base_policy: Type[ActorCriticPolicy] = None,
+            use_sde: bool = False,
+            log_std_init: float = 0.0,
+            full_std: bool = True,
+            use_expln: bool = False,
+            base_env_task_name=None,
+            base_env_xml_assets_path=None,
+            transfer_env_task_name=None,
+            transfer_env_xml_assets_path=None,
+            mlp_extractor_kwargs=None,
+            ** kwargs,
+    ):
+
+        super(ActorCriticGNNPolicyTransfer, self).__init__(
+            observation_space,
+            action_space,
+            lr_schedule,
+            net_arch=base_policy.net_arch,
+            activation_fn=base_policy.activation_fn,
+            ortho_init=base_policy.ortho_init,
+            use_sde=base_policy.use_sde,
+            log_std_init=log_std_init,
+            full_std=full_std,
+            sde_net_arch=base_policy.sde_net_arch,
+            use_expln=use_expln,
+            squash_output=base_policy.squash_output,
+            features_extractor_class=base_policy.features_extractor_class,
+            features_extractor_kwargs=base_policy.features_extractor_kwargs,
+            mlp_extractor_kwargs=mlp_extractor_kwargs,
+            normalize_images=base_policy.normalize_images,
+            optimizer_class=base_policy.optimizer_class,
+            optimizer_kwargs=base_policy.optimizer_kwargs,
+        )
+        self.base_policy = base_policy
+        self.base_env_task_name = base_env_task_name
+        self.base_env_xml_assets_path = base_env_xml_assets_path
+        self.transfer_env_task_name = transfer_env_task_name
+        self.transfer_env_xml_assets_path = transfer_env_xml_assets_path
+
+        self.base_env_info = parse_mujoco_graph(task_name=self.base_env_task_name,
+                                                xml_assets_path=self.base_env_xml_assets_path)
+
+        self.transfer_env_info = parse_mujoco_graph(task_name=self.transfer_env_task_name,
+                                                    xml_assets_path=self.transfer_env_xml_assets_path)
+
+        base_output_mapping = dict()
+        transfer_output_mapping = dict()
+
+        for out_id, node_id in enumerate(self.base_env_info["output_list"]):
+            node_key = self.base_env_info["tree"][node_id]["name"]
+            base_output_mapping[node_key] = out_id
+
+        for out_id, node_id in enumerate(self.transfer_env_info["output_list"]):
+            node_key = self.transfer_env_info["tree"][node_id]["name"]
+            transfer_output_mapping[node_key] = out_id
+
+        self.out_base_mask = []
+        self.out_transfer_mask = []
+        for node_key in transfer_output_mapping.keys():
+            if node_key in base_output_mapping.keys():
+                self.out_base_mask += [transfer_output_mapping[node_key]]
+                self.out_transfer_mask += [base_output_mapping[node_key]]
+
+        # current action dist is 12
+        # transfered action dist is 8.
+        # we need padding here
+        #self.action_dist = base_policy.action_dist
+        # self.log_std = torch.zeros( self.base_policy.action_space.shape[0]))
+        with torch.no_grad():
+            self.log_std[self.out_base_mask] = base_policy.log_std.detach()[
+                self.out_transfer_mask]
+
+        # old: feature_dim: 38
+        # new: feature_dim: 28
+        self.features_extractor = base_policy.features_extractor
+
+        # old and new have latent_dim for pi and vf: 64
+        self.mlp_extractor.shared_input_nets = base_policy.mlp_extractor.shared_input_nets
+        self.mlp_extractor.gnn_policy = base_policy.mlp_extractor.gnn_policy
+        self.mlp_extractor.gnn_values = base_policy.mlp_extractor.gnn_values
+        self.mlp_extractor.value_net = base_policy.mlp_extractor.value_net
+        self.mlp_extractor.policy_net = base_policy.mlp_extractor.policy_net
+        if hasattr(base_policy.mlp_extractor, "policy_nets"):
+            self.mlp_extractor.policy_nets = base_policy.mlp_extractor.policy_nets
+
+        # in_features for both = 64
+        # out is 12 and 8
+        self.action_net = base_policy.action_net
+
+        # this fully matches: in 64 and out 1
+        self.value_net = base_policy.value_net
+
+
 class ActorCriticMLPPolicyTransfer(ActorCriticPolicy):
     """
     Wrapper of policy class for actor-critic algorithms (has both policy and value prediction).
