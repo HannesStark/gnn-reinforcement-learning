@@ -40,7 +40,8 @@ class NerveNetGNN(nn.Module):
                  device: Union[torch.device, str] = "auto",
                  task_name: str = None,
                  xml_name: str = None,
-                 xml_assets_path: Union[str, Path] = None):
+                 xml_assets_path: Union[str, Path] = None,
+                 is_transfer_env=False):
         '''
         TODO add documentation
 
@@ -86,6 +87,7 @@ class NerveNetGNN(nn.Module):
                 }
         '''
         super(NerveNetGNN, self).__init__()
+        self.is_transfer_env = is_transfer_env
         self.observation_dim = observation_dim
         self.task_name = task_name
         self.xml_name = xml_name
@@ -360,6 +362,8 @@ class NerveNetGNN(nn.Module):
         return policy_embedding, value_embedding
 
     def _forward_value_net(self, value_embedding, observations) -> torch.Tensor:
+        if self.is_transfer_env:
+            return None
 
         if self.gnn_for_values:
             pooled_value_embedding = torch.mean(value_embedding, dim=1)

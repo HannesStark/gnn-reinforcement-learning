@@ -80,18 +80,20 @@ class NerveNetConv(MessagePassing):
         self._cached_adj_t = None
 
     def forward(self, x: Tensor, edge_index: Adj,
-                edge_weight: OptTensor = None) -> Tensor:
+                update_masks: dict = None) -> Tensor:
         """
 
         """
 
         # propagate_type: (x: Tensor, edge_weight: OptTensor)
-        out = self.propagate(edge_index, x=x, edge_weight=edge_weight,
+        if update_masks is not None:
+            self.update_masks = update_masks
+        out = self.propagate(edge_index, x=x, update_masks=update_masks,
                              size=None)
 
         return out
 
-    def message(self, x_j: Tensor, edge_weight: OptTensor) -> Tensor:
+    def message(self, x_j: Tensor, update_masks: dict) -> Tensor:
         r"""Constructs messages from node :math:`j` to node :math:`i`
         in analogy to :math:`\phi_{\mathbf{\Theta}}` for each edge in
         :obj:`edge_index`.

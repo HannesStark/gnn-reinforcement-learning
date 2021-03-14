@@ -100,6 +100,8 @@ def init_evaluate(args):
                 'gnn_for_values': train_arguments["gnn_for_values"],
                 'embedding_option': embedding_option[train_arguments["embedding_option"]],
                 'xml_assets_path': train_arguments["xml_assets_path"],
+                'is_transfer_env': True,
+                'policy_readout_mode': train_arguments["policy_readout_mode"],
             }
 
     model_transfer = alg_class(transfer_policy_name,  # train_arguments["policy"],
