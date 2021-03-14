@@ -117,7 +117,7 @@ def parse_arguments():
     p.add_argument('--render',
                    help='Whether to render the evaluation with pybullet client',
                    type=bool,
-                   default=True)
+                   default=False)
 
     p.add_argument('--save_again',
                    help='Whether to save the model in a way we can load it on any system',

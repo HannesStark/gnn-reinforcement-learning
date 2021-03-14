@@ -290,6 +290,8 @@ def __unpack_node(node: BeautifulSoup,
                     {"geoms": [geom.attrs for geom in geoms]})
         else:
             id = parent_id
+    else:
+        return current_tree
 
     for child in child_soups:
         current_tree.update(__unpack_node(child,

@@ -10,6 +10,7 @@ import json
 import pyaml
 import torch
 import yaml
+from torch import nn
 import numpy as np
 
 from stable_baselines3.common.utils import get_device
@@ -19,6 +20,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 import pybullet_data
 import pybullet_envs  # register pybullet envs from bullet3
 
+from NerveNet.graph_util.mujoco_parser_settings import ControllerOption, EmbeddingOption, RootRelationOption
 from NerveNet.policies import register_policies
 import NerveNet.gym_envs.pybullet.register_disability_envs
 
@@ -29,6 +31,19 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from util import LoggingCallback
 algorithms = dict(A2C=A2C, PPO=PPO)
 
+activation_functions = dict(Tanh=nn.Tanh, ReLU=nn.ReLU)
+
+controller_option = dict(shared=ControllerOption.SHARED,
+                         seperate=ControllerOption.SEPERATE,
+                         unified=ControllerOption.UNIFIED)
+
+embedding_option = dict(shared=EmbeddingOption.SHARED,
+                        unified=EmbeddingOption.UNIFIED)
+
+root_option = dict(none=RootRelationOption.NONE,
+                   body=RootRelationOption.BODY,
+                   unified=RootRelationOption.ALL)
+
 
 def init_evaluate(args):
 
@@ -36,12 +51,6 @@ def init_evaluate(args):
     with open(args.train_output / "train_arguments.yaml") as yaml_data:
         train_arguments = yaml.load(yaml_data,
                                     Loader=yaml.FullLoader)
-
-    with open(args.train_output / "net_arch.txt") as json_data:
-        json_str = json_data.read()
-        # replace ' with " as a workaround because we didn't do a
-        # proper json.dump create the net_arch.txt
-        net_arch = json.loads(json_str.replace("'", '"'))
 
     alg_class = algorithms[train_arguments["alg"]]
 
@@ -54,7 +63,7 @@ def init_evaluate(args):
     alg_kwargs = dict()
     policy_kwargs = dict()
     policy_kwargs['base_policy'] = model_old.policy
-    policy_kwargs['net_arch'] = net_arch
+    policy_kwargs['net_arch'] = model_old.policy_kwargs["net_arch"]
     policy_kwargs['base_env_task_name'] = train_arguments["task_name"]
     policy_kwargs['base_env_xml_assets_path'] = Path(
         train_arguments["xml_assets_path"])
@@ -81,17 +90,19 @@ def init_evaluate(args):
         if train_arguments["activation_fn"] is not None:
             policy_kwargs["activation_fn"] = activation_functions[train_arguments["activation_fn"]]
 
+    transfer_policy_name = "MLPTransferPolicy"
     if "policy" in train_arguments:
         if train_arguments["policy"] == "GnnPolicy":
+            transfer_policy_name = "GNNTransferPolicy"
             policy_kwargs["mlp_extractor_kwargs"] = {
-                "task_name": train_arguments["task_name"],
+                "task_name": args.transfer_env,
                 'device': train_arguments["device"],
                 'gnn_for_values': train_arguments["gnn_for_values"],
                 'embedding_option': embedding_option[train_arguments["embedding_option"]],
                 'xml_assets_path': train_arguments["xml_assets_path"],
             }
 
-    model_transfer = alg_class("MLPTransferPolicy",  # train_arguments["policy"],
+    model_transfer = alg_class(transfer_policy_name,  # train_arguments["policy"],
                                env,
                                verbose=1,
                                n_steps=train_arguments["n_steps"],
@@ -152,17 +163,18 @@ def parse_arguments():
     p.add_argument('--train_output',
                    help="The directory where the training output & configs were logged to",
                    type=dir_path,
-                   default='runs/MLP_PPO_pi64_64_vf64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_shared_AntBulletEnv-v0_02-03_10-45-07')
-    # default='runs/MLP_PPO_pi48_48_vf48_48_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_sharedEpochs_10_Nenvs_1_AntSixLegsEnv-v0_04-03_22-51-23')
+                   default='runs/Nervenet-V1-hannes')
 
     p.add_argument("--num_episodes",
                    help="The number of episodes to run to evaluate the model",
                    type=int,
-                   default=3)
+                   default=1)
 
     p.add_argument("--transfer_env",
                    help="The environment the model should be transfered to",
                    type=str,
+                   # default="AntBulletEnv-v0")
+                   # default="AntSixLegsEnv-v0")
                    default="AntCpLeftBackBulletEnv-v0")
 
     p.add_argument('--xml_assets_path',
@@ -174,7 +186,7 @@ def parse_arguments():
     p.add_argument('--render',
                    help='Whether to render the evaluation with pybullet client',
                    type=bool,
-                   default=False)
+                   default=True)
 
     args = p.parse_args()
 
