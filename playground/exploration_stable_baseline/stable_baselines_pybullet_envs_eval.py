@@ -20,7 +20,7 @@ model_dir = Path(
     "C:\\Users\\tsbau\\git\\tum-adlr-ws21-04\\runs\\MLP_S64_P64_V64_N1000_B64_lr3e-4_AntCpLeftBackBulletEnv-v0_14-02_23-42-32")
 model_dir = Path('')
 
-model = PPO.load(model_dir / "model.zip", device='cpu')
+model = PPO.load(model_dir / "model2.zip", device='cpu')
 env_name = 'AntBulletEnv-v0'
 
 eval_env = gym.make(env_name)

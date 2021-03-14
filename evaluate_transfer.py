@@ -152,7 +152,7 @@ def parse_arguments():
     p.add_argument('--train_output',
                    help="The directory where the training output & configs were logged to",
                    type=dir_path,
-                   default='runs/MLP_PPO_pi64_64_vf64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_shared_AntBulletEnv-v0_02-03_10-45-07')
+                   default='runs/success')
     # default='runs/MLP_PPO_pi48_48_vf48_48_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_sharedEpochs_10_Nenvs_1_AntSixLegsEnv-v0_04-03_22-51-23')
 
     p.add_argument("--num_episodes",

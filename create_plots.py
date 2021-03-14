@@ -13,8 +13,6 @@ input_paths = [
     # 'GNN_PPO_inp_12_pro_64_64_64_64_pol_64_val_32_N2048_B64_lr3e-04_mode_flattened_Epochs_10_Nenvs_1_AntBulletEnv-v0_10-03_12-41-43',
     'nervenet_v1',
     'antgnn',
-
-    #
     'MLP_TUNED_PPO_pi64_64_vf64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_shared_AntBulletEnv-v0_02-03_10-45-07',
     # 'NerveNetV2_GAT-GNN_PPO_inp_16_pro_161_161_161_161_pol_64_val_64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_sharedEpochs_10_Nenvs_1_GAT_AntBulletEnv-v0_07-03_23-58-23',
 
