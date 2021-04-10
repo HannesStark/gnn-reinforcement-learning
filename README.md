@@ -1,4 +1,4 @@
-# tum-adlr-ws21-04
+# gnn-reinforcement-learning
 
 ## Setup Guide
 
