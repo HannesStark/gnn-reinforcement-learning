@@ -11,7 +11,7 @@ input_paths = [
     # 'Mlp_AntBulletEnv-v0_10-01_09-58-23',
     'GNN_PPO_inp_64_pro_64324_pol_64_val_64_64_N2048_B256_lr2e-04_mode_action_per_controller_Epochs_10_Nenvs_4_GRU_AntBulletEnv-v0_10-03_11-25-40',
     # 'GNN_PPO_inp_12_pro_64_64_64_64_pol_64_val_32_N2048_B64_lr3e-04_mode_flattened_Epochs_10_Nenvs_1_AntBulletEnv-v0_10-03_12-41-43',
-    'nervenet_v1',
+    'success',
     'antgnn',
     'MLP_TUNED_PPO_pi64_64_vf64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_shared_AntBulletEnv-v0_02-03_10-45-07',
     # 'NerveNetV2_GAT-GNN_PPO_inp_16_pro_161_161_161_161_pol_64_val_64_64_N2048_B64_lr2e-04_GNNValue_0_EmbOpt_sharedEpochs_10_Nenvs_1_GAT_AntBulletEnv-v0_07-03_23-58-23',
@@ -29,6 +29,10 @@ for path in input_paths:
 
         lists.append(rewards)
 
+lists[0] = np.repeat(np.array(lists[0]), 10)
+lists[1] = np.repeat(np.array(lists[1]), 1)
+lists[2] = np.repeat(np.array(lists[2]), 2)
+lists[3] = np.repeat(np.array(lists[3]), 2)
 min_len = np.inf
 for reward_list in lists:
     if len(reward_list) < min_len:
