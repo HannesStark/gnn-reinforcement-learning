@@ -432,7 +432,11 @@ class ActorCriticGNNPolicyTransfer(ActorCriticGnnPolicy):
 
         # in_features for both = 64
         # out is 12 and 8
-        self.action_net = base_policy.action_net
+        self.base_action_net = base_policy.action_net
+        self.action_net = ActionNetWrapper(self.base_action_net,
+                                           self.action_space.shape[0],
+                                           self.out_base_mask,
+                                           self.out_transfer_mask)
 
         # this fully matches: in 64 and out 1
         self.value_net = base_policy.value_net
